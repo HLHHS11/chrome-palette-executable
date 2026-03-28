@@ -17,6 +17,7 @@ import audibleTabSuggestions from "./commands/audio";
 import bookmarkThisSuggestions from "./commands/bookmark-this";
 import bookmarkSuggestions from "./commands/bookmarks";
 import extenionsSuggestions from "./commands/extensions";
+import geminiSuggestions from "./commands/gemini";
 import generalSuggestions, { Command } from "./commands/general";
 import historySuggestions from "./commands/history";
 import switchTabSuggestions from "./commands/tabs";
@@ -36,7 +37,7 @@ chrome.commands.getAll().then((commands) => {
 const [inputValue, setInputValue] = inputSignal;
 
 const allCommands = createMemo(() => {
-  let commands: Command[] = [
+  const commands: Command[] = [
     ...generalSuggestions(),
     ...audibleTabSuggestions(),
     ...bookmarkThisSuggestions(),
@@ -44,6 +45,7 @@ const allCommands = createMemo(() => {
     ...historySuggestions(),
     ...bookmarkSuggestions(),
     ...extenionsSuggestions(),
+    ...geminiSuggestions(),
     ...websitesSuggestions(),
     ...themeSuggestions(),
   ];
