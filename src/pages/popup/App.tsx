@@ -37,16 +37,20 @@ chrome.commands.getAll().then((commands) => {
 
 const [inputValue, setInputValue] = inputSignal;
 
-const [activeTabUrl] = createResource(async () => {
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    lastFocusedWindow: true,
-  });
-  return tab?.url;
-});
+const [activeTabPageUrl] = createResource(
+  async (): Promise<URL | undefined> => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
+
+    if (!tab.url) return undefined;
+    return new URL(tab.url);
+  }
+);
 
 const allCommands = createMemo(() => {
-  const tabUrl = activeTabUrl();
+  const pageUrl = activeTabPageUrl();
   const commands: Command[] = [
     ...generalSuggestions(),
     ...audibleTabSuggestions(),
@@ -55,8 +59,8 @@ const allCommands = createMemo(() => {
     ...historySuggestions(),
     ...bookmarkSuggestions(),
     ...extenionsSuggestions(),
-    ...chatgptSuggestions(tabUrl),
-    ...geminiSuggestions(tabUrl),
+    ...chatgptSuggestions(pageUrl),
+    ...geminiSuggestions(pageUrl),
     ...websitesSuggestions(),
     ...themeSuggestions(),
   ];

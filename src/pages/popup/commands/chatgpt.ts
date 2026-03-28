@@ -4,7 +4,7 @@ import { Command } from "./general";
 
 const [, setInputValue] = inputSignal;
 
-async function runChatgptSidebarToggle(): Promise<void> {
+async function runToggleChatGptSidebar(): Promise<void> {
   try {
     const [tab] = await chrome.tabs.query({
       active: true,
@@ -21,39 +21,35 @@ async function runChatgptSidebarToggle(): Promise<void> {
           'button[aria-label="サイドバーを開く"]'
         );
 
+        // 閉じるボタンは常時存在し、さらに aria-expanded 属性から最新状態が読み取れるので、それによって判断
         const isExpanded = closeBtn?.getAttribute("aria-expanded") === "true";
         if (isExpanded) {
-          if (!closeBtn) return;
+          if (!closeBtn) throw new Error("閉じるボタンが見つかりません。");
           closeBtn.click();
         } else {
-          if (!openBtn) return;
+          if (!openBtn) throw new Error("開くボタンが見つかりません。");
           openBtn.click();
         }
       },
     });
     window.close();
-  } catch {
+  } catch (e) {
+    console.error(e);
     setInputValue("エラーが発生しました。");
   }
 }
 
-export default function chatgptSuggestions(
-  activeTabUrl: string | undefined
+export default function getChatgptCommands(
+  pageUrl: URL | undefined
 ): Command[] {
-  const isChatGptPage = (() => {
-    if (typeof activeTabUrl === "undefined") return false;
-
-    const url = new URL(activeTabUrl);
-    return url.hostname === "chatgpt.com";
-  })();
-
+  const isChatGptPage = pageUrl?.hostname === "chatgpt.com";
   if (!isChatGptPage) return [];
 
   return [
     {
       title: "ChatGPT: Toggle Side Bar",
       subtitle: `ChatGPT: サイドバーをトグル`,
-      command: runChatgptSidebarToggle,
+      command: runToggleChatGptSidebar,
     },
   ];
 }
