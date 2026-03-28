@@ -47,8 +47,8 @@ export default function getChatgptCommands(
 
   return [
     {
-      title: "ChatGPT: Toggle Side Bar",
-      subtitle: `ChatGPT: サイドバーをトグル`,
+      title: `ChatGPT: サイドバーをトグル`,
+      subtitle: "ChatGPT: Toggle Side Bar",
       command: runToggleChatGptSidebar,
     },
   ];

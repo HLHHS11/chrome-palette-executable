@@ -23,6 +23,7 @@ import generalSuggestions, { Command } from "./commands/general";
 import historySuggestions from "./commands/history";
 import switchTabSuggestions from "./commands/tabs";
 import themeSuggestions from "./commands/themes";
+import utilsCopyTabLinkSuggestions from "./commands/utils-copy-tab-link";
 import websitesSuggestions from "./commands/website-search";
 import { sortByUsed, storeLastUsed } from "./util/last-used";
 import { createStoredSignal, inputSignal, parsedInput } from "./util/signals";
@@ -63,6 +64,7 @@ const allCommands = createMemo(() => {
     ...geminiSuggestions(pageUrl),
     ...websitesSuggestions(),
     ...themeSuggestions(),
+    ...utilsCopyTabLinkSuggestions(),
   ];
   sortByUsed(commands);
   return commands;

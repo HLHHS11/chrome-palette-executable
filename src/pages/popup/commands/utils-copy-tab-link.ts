@@ -1,0 +1,98 @@
+import { inputSignal } from "~/util/signals";
+
+import { Command } from "./general";
+
+const [, setInputValue] = inputSignal;
+
+async function pickActiveTab(): Promise<chrome.tabs.Tab | undefined> {
+  const [tab] = await chrome.tabs.query({
+    active: true,
+    lastFocusedWindow: true,
+  });
+  return tab;
+}
+
+function buildMarkdownLinkSnippet(
+  documentTitle: string,
+  pageUrl: string
+): string {
+  // マークダウンのリンク構文を壊しうる文字 ([, ]) をエスケープし、\はエスケープ記号として二重化する
+  const escapedLinkLabel = documentTitle
+    .replace(/\\/g, "\\\\")
+    .replace(/\[/g, "\\[")
+    .replace(/\]/g, "\\]");
+  return `[${escapedLinkLabel}](${pageUrl})`;
+}
+
+/** 貼り付け先が HTML を解釈できる場合に読み込むアンカータグ */
+function buildRichTextHtmlFragment(
+  documentTitle: string,
+  pageUrl: string
+): string {
+  // href属性値として埋め込むため、HTML属性値として埋め込んで問題になる文字 (&,")をエスケープ
+  const escapedPageUrl = pageUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  // アンカーのテキストとして埋め込むため、HTMLとして解釈される文字 (&,<,>) をエスケープ
+  const escapedHtmlTextContent = documentTitle
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return `<a href="${escapedPageUrl}">${escapedHtmlTextContent}</a>`;
+}
+
+async function runCopyMarkdownTabLink(): Promise<void> {
+  try {
+    const activeTab = await pickActiveTab();
+    const pageUrl = activeTab?.url;
+    const documentTitle = activeTab?.title ?? "";
+
+    if (!pageUrl) throw new Error("現在のタブの URL が取得できません。");
+
+    const markdownSnippet = buildMarkdownLinkSnippet(documentTitle, pageUrl);
+    await navigator.clipboard.writeText(markdownSnippet);
+    window.close();
+  } catch (err) {
+    console.error(err);
+    setInputValue("エラーが発生しました。");
+  }
+}
+
+async function runCopyRichTextTabLink(): Promise<void> {
+  try {
+    const activeTab = await pickActiveTab();
+    const pageUrl = activeTab?.url;
+    const documentTitle = activeTab?.title ?? "";
+
+    if (!pageUrl) throw new Error("現在のタブの URL が取得できません。");
+
+    const htmlFragment = buildRichTextHtmlFragment(documentTitle, pageUrl);
+    const plainTextFallback = `${documentTitle} ${pageUrl}`;
+    const htmlBlob = new Blob([htmlFragment], { type: "text/html" });
+    const plainBlob = new Blob([plainTextFallback], { type: "text/plain" });
+
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/html": htmlBlob,
+        "text/plain": plainBlob,
+      }),
+    ]);
+    window.close();
+  } catch (err) {
+    console.error(err);
+    setInputValue("エラーが発生しました。");
+  }
+}
+
+export default function getUtilsCopyTabLinkCommands(): Command[] {
+  return [
+    {
+      title: "Utils: マークダウン形式で現在のタブのリンクをコピー",
+      subtitle: "Utils: Copy Active Tab Link as Markdown",
+      command: runCopyMarkdownTabLink,
+    },
+    {
+      title: "Utils: リッチテキストで現在のタブのリンクをコピー",
+      subtitle: "Utils: Copy Active Tab Link as Rich Text",
+      command: runCopyRichTextTabLink,
+    },
+  ];
+}
