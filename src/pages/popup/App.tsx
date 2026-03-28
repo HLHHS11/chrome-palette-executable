@@ -16,6 +16,7 @@ import Shortcut from "./Shortcut";
 import audibleTabSuggestions from "./commands/audio";
 import bookmarkThisSuggestions from "./commands/bookmark-this";
 import bookmarkSuggestions from "./commands/bookmarks";
+import chatgptSuggestions from "./commands/chatgpt";
 import extenionsSuggestions from "./commands/extensions";
 import geminiSuggestions from "./commands/gemini";
 import generalSuggestions, { Command } from "./commands/general";
@@ -54,6 +55,7 @@ const allCommands = createMemo(() => {
     ...historySuggestions(),
     ...bookmarkSuggestions(),
     ...extenionsSuggestions(),
+    ...chatgptSuggestions(tabUrl),
     ...geminiSuggestions(tabUrl),
     ...websitesSuggestions(),
     ...themeSuggestions(),
