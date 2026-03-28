@@ -4,59 +4,51 @@ import { Command } from "./general";
 
 const [, setInputValue] = inputSignal;
 
-/** chatgpt.com および *.chatgpt.com を chatgpt.com/* とみなす */
-function isChatGptPage(tabUrl: string | undefined): boolean {
-  if (!tabUrl) return false;
-  try {
-    const { hostname } = new URL(tabUrl);
-    return hostname === "chatgpt.com";
-  } catch {
-    return false;
-  }
-}
-
 async function runChatgptSidebarToggle(): Promise<void> {
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    lastFocusedWindow: true,
-  });
-  if (!tab?.id) {
-    setInputValue("アクティブなタブがありません。");
-    return;
-  }
-  if (!isChatGptPage(tab.url)) {
-    setInputValue(
-      "chatgpt.com を開いたタブでパレットを開いてから実行してください。"
-    );
-    return;
-  }
   try {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
     await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
+      target: { tabId: tab.id! },
       world: "ISOLATED",
       func: () => {
-        const btn = document.querySelector(
+        const closeBtn = document.querySelector<HTMLButtonElement>(
           'button[aria-label="サイドバーを閉じる"]'
         );
-        if (!(btn instanceof HTMLElement)) return;
-        // 常に存在するトグルボタン。開閉は aria-expanded で判別（true = 展開中）
-        const wasExpanded = btn.getAttribute("aria-expanded") === "true";
-        btn.click();
-        return wasExpanded;
+        const openBtn = document.querySelector<HTMLButtonElement>(
+          'button[aria-label="サイドバーを開く"]'
+        );
+
+        const isExpanded = closeBtn?.getAttribute("aria-expanded") === "true";
+        if (isExpanded) {
+          if (!closeBtn) return;
+          closeBtn.click();
+        } else {
+          if (!openBtn) return;
+          openBtn.click();
+        }
       },
     });
-  } catch (err) {
-    console.error(err);
-    setInputValue("スクリプト注入に失敗しました（permissions を確認）。");
-    return;
+    window.close();
+  } catch {
+    setInputValue("エラーが発生しました。");
   }
-  window.close();
 }
 
 export default function chatgptSuggestions(
   activeTabUrl: string | undefined
 ): Command[] {
-  if (!isChatGptPage(activeTabUrl)) return [];
+  const isChatGptPage = (() => {
+    if (typeof activeTabUrl === "undefined") return false;
+
+    const url = new URL(activeTabUrl);
+    return url.hostname === "chatgpt.com";
+  })();
+
+  if (!isChatGptPage) return [];
+
   return [
     {
       title: "ChatGPT: Toggle Side Bar",

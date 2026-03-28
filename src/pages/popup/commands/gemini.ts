@@ -4,52 +4,41 @@ import { Command } from "./general";
 
 const [, setInputValue] = inputSignal;
 
-const GEMINI_ORIGIN = "https://gemini.google.com";
-
-function isGeminiPage(tabUrl: string | undefined): boolean {
-  if (tabUrl === undefined) return false;
-  return tabUrl.startsWith(GEMINI_ORIGIN);
-}
-
 async function runGeminiSideNavClick(): Promise<void> {
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    lastFocusedWindow: true,
-  });
-  if (!tab?.id) {
-    setInputValue("アクティブなタブがありません。");
-    return;
-  }
-  if (!tab.url?.startsWith(GEMINI_ORIGIN)) {
-    setInputValue(
-      "gemini.google.com を開いたタブでパレットを開いてから実行してください。"
-    );
-    return;
-  }
   try {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
     await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
+      target: { tabId: tab.id! },
       world: "ISOLATED",
       func: () => {
-        const el = document.querySelector(
+        const toggleButton = document.querySelector<HTMLButtonElement>(
           'button[data-test-id="side-nav-menu-button"]'
         );
-        (el as HTMLButtonElement | null)?.click();
+        if (!toggleButton) return;
+        toggleButton.click();
       },
     });
-  } catch (err) {
-    console.error(err);
-    setInputValue("スクリプト注入に失敗しました（permissions を確認）。");
-    return;
+    window.close();
+  } catch {
+    setInputValue("エラーが発生しました。");
   }
-  window.close();
 }
 
 /** 一覧に載せるのは Gemini 表示中のタブだけ（YouTube などでは出さない） */
 export default function geminiSuggestions(
   activeTabUrl: string | undefined
 ): Command[] {
-  if (!isGeminiPage(activeTabUrl)) return [];
+  const isGeminiPage = (() => {
+    if (typeof activeTabUrl === "undefined") return false;
+    const url = new URL(activeTabUrl);
+    return url.hostname === "gemini.google.com";
+  })();
+
+  if (!isGeminiPage) return [];
+
   return [
     {
       title: "Gemini: サイドバーをトグル",
