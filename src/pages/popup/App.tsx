@@ -36,7 +36,16 @@ chrome.commands.getAll().then((commands) => {
 
 const [inputValue, setInputValue] = inputSignal;
 
+const [activeTabUrl] = createResource(async () => {
+  const [tab] = await chrome.tabs.query({
+    active: true,
+    lastFocusedWindow: true,
+  });
+  return tab?.url;
+});
+
 const allCommands = createMemo(() => {
+  const tabUrl = activeTabUrl();
   const commands: Command[] = [
     ...generalSuggestions(),
     ...audibleTabSuggestions(),
@@ -45,7 +54,7 @@ const allCommands = createMemo(() => {
     ...historySuggestions(),
     ...bookmarkSuggestions(),
     ...extenionsSuggestions(),
-    ...geminiSuggestions(),
+    ...geminiSuggestions(tabUrl),
     ...websitesSuggestions(),
     ...themeSuggestions(),
   ];
@@ -133,7 +142,7 @@ const App = () => {
     <>
       <div
         class="App"
-        onBlur={(e) => {
+        onBlur={() => {
           window.close();
         }}
       >

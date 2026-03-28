@@ -6,6 +6,11 @@ const [, setInputValue] = inputSignal;
 
 const GEMINI_ORIGIN = "https://gemini.google.com";
 
+function isGeminiPage(tabUrl: string | undefined): boolean {
+  if (tabUrl === undefined) return false;
+  return tabUrl.startsWith(GEMINI_ORIGIN);
+}
+
 async function runGeminiSideNavClick(): Promise<void> {
   const [tab] = await chrome.tabs.query({
     active: true,
@@ -40,7 +45,11 @@ async function runGeminiSideNavClick(): Promise<void> {
   window.close();
 }
 
-export default function geminiSuggestions(): Command[] {
+/** 一覧に載せるのは Gemini 表示中のタブだけ（YouTube などでは出さない） */
+export default function geminiSuggestions(
+  activeTabUrl: string | undefined
+): Command[] {
+  if (!isGeminiPage(activeTabUrl)) return [];
   return [
     {
       title: "Gemini: サイドバーをトグル",
