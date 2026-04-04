@@ -32,6 +32,15 @@ export async function enableChatGptWebSearch(): Promise<void> {
   simulateMouseClick(webSearchButtonResult.value);
 }
 
+export function disableChatGptWebSearch(): void {
+  const btn = document.querySelector<HTMLButtonElement>(
+    'button[aria-label="検索：クリックして削除"]'
+  );
+  // 無効化ボタンが見つからない場合は何もしない
+  if (!btn) return;
+  btn.click();
+}
+
 export function toggleChatGptSidebar(): void {
   const closeBtn = document.querySelector(
     'button[aria-label="サイドバーを閉じる"]'
