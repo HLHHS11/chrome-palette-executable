@@ -37,6 +37,14 @@ const manifest = defineManifest(async () => ({
       },
     },
   },
+  // TODO: #1 これ、正直matchesはあらゆるwebページにしちゃっても困らない気はするんだよな
+  content_scripts: [
+    {
+      matches: ["https://chatgpt.com/*"],
+      js: ["src/pages/content/main.ts"],
+      run_at: "document_idle",
+    },
+  ],
   permissions: [
     "alarms",
     "tabs",
@@ -52,6 +60,7 @@ const manifest = defineManifest(async () => ({
     {
       resources: [
         "_favicon/*",
+        "assets/*",
         "assets/js/*.js",
         "assets/css/*.css",
         "assets/img/*",
