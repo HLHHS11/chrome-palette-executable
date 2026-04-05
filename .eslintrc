@@ -19,7 +19,12 @@
     "sourceType": "module"
   },
   "plugins": ["solid", "@typescript-eslint"],
-  "rules": {},
+  "rules": {
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "destructuredArrayIgnorePattern": "^_" }
+    ]
+  },
   "globals": {
     "chrome": "readonly"
   },

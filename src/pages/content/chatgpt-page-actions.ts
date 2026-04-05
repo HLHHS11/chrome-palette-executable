@@ -3,8 +3,14 @@ import {
   waitForSelector,
   waitUntilValue,
 } from "../lib/dom/selector";
+import { RpcResponse, VoidResponseBody } from "../lib/rpc/types";
 
-export async function enableChatGptWebSearch(): Promise<void> {
+// TODO: #1 REVERT symbolを返すのは型チェックのため
+export async function enableChatGptWebSearch(): Promise<
+  RpcResponse<VoidResponseBody>
+> {
+  // NOTE: 既にメニューが開いている状態で本コマンドを実行すると、メニューが閉じてしまう。
+  // 再度実行すれば良いので今 (260405 Issue #1) 時点では無視するが、丁寧に作り込みたいならメニューの開閉状況確認のロジックを入れても良い。
   const optionMenuButton = await waitForSelector("button.composer-btn");
   simulateMouseClick(optionMenuButton);
 
@@ -30,18 +36,21 @@ export async function enableChatGptWebSearch(): Promise<void> {
   }
 
   simulateMouseClick(webSearchButtonResult.value);
+  return { ok: true, data: {} };
 }
 
-export function disableChatGptWebSearch(): void {
+export function disableChatGptWebSearch(): RpcResponse<VoidResponseBody> {
   const btn = document.querySelector<HTMLButtonElement>(
     'button[aria-label="検索：クリックして削除"]'
   );
   // 無効化ボタンが見つからない場合は何もしない
-  if (!btn) return;
+  if (!btn) return { ok: false, error: "無効化ボタンが見つかりません。" };
   btn.click();
+
+  return { ok: true, data: {} };
 }
 
-export function toggleChatGptSidebar(): void {
+export function toggleChatGptSidebar(): RpcResponse<VoidResponseBody> {
   const closeBtn = document.querySelector(
     'button[aria-label="サイドバーを閉じる"]'
   );
@@ -51,10 +60,13 @@ export function toggleChatGptSidebar(): void {
 
   const isExpanded = closeBtn?.getAttribute("aria-expanded") === "true";
   if (isExpanded) {
-    if (!closeBtn) throw new Error("閉じるボタンが見つかりません。");
+    if (!closeBtn)
+      return { ok: false, error: "閉じるボタンが見つかりません。" };
     simulateMouseClick(closeBtn);
   } else {
-    if (!openBtn) throw new Error("開くボタンが見つかりません。");
+    if (!openBtn) return { ok: false, error: "開くボタンが見つかりません。" };
     simulateMouseClick(openBtn);
   }
+
+  return { ok: true, data: {} };
 }
