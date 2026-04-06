@@ -6,6 +6,11 @@ export type RpcResponse<ResponseBody extends object = object> =
       data: ResponseBody;
     }
   | {
+      // 何も操作をしなかった場合などに用いる
+      ok: true;
+      info: string;
+    }
+  | {
       ok: false;
       error: string;
     };
