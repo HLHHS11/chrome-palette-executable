@@ -70,3 +70,67 @@ export function toggleChatGptSidebar(): RpcResponse<VoidResponseBody> {
 
   return { ok: true, data: {} };
 }
+
+type SelectChatGptModelParams =
+  | {
+      model: "gpt-5.3";
+    }
+  | {
+      model: "gpt-5.4-thinking";
+      thinkingEffort: "standard" | "extended";
+    };
+
+/** {@link SelectChatGptModelParams} のモデル名に対応する実DOM上のdata-testid対応関係 */
+const MODEL_TEST_IDS = {
+  "gpt-5.3": "model-switcher-gpt-5-3",
+  "gpt-5.4-thinking": "model-switcher-gpt-5-4-thinking",
+} as const;
+
+/** {@link SelectChatGptModelParams} のthinking effortの値に対応する実DOM上のラベル対応関係 */
+const THINKING_EFFORT_LABELS = {
+  standard: "標準",
+  extended: "拡張",
+} as const;
+
+// TODO: #1 既に選択されている場合にこまるわ。
+export async function selectChatGptModel(
+  params: SelectChatGptModelParams
+): Promise<RpcResponse<VoidResponseBody>> {
+  const modelSwitchDropdownButton = await waitForSelector(
+    'button[data-testid="model-switcher-dropdown-button"]'
+  );
+  simulateMouseClick(modelSwitchDropdownButton);
+
+  const modelButton = await waitForSelector(
+    `div[data-testid="${MODEL_TEST_IDS[params.model]}"]`
+  );
+  simulateMouseClick(modelButton);
+
+  if (params.model === "gpt-5.3") {
+    // instantモデルの場合、この時点で終了して良い
+    return { ok: true, data: {} };
+  } else {
+    // thinkingモデルの場合、さらにthinking effortを選択
+    const label = THINKING_EFFORT_LABELS[params.thinkingEffort];
+
+    const effortDivResult = await waitUntilValue(() => {
+      const candidateDivElms = document.querySelectorAll("div.truncate");
+      const target = [...candidateDivElms].find(
+        (el) => el.textContent?.trim() === label
+      );
+      return target
+        ? { status: "found", value: target }
+        : { status: "pending", value: null };
+    });
+
+    if (effortDivResult.status !== "found") {
+      return {
+        ok: false,
+        error: `Thinking effort "${label}" の選択肢が見つかりません。`,
+      };
+    }
+
+    simulateMouseClick(effortDivResult.value);
+    return { ok: true, data: {} };
+  }
+}

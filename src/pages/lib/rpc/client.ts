@@ -1,12 +1,8 @@
-import type {
-  ExtractMessageType,
-  ExtractResponseType,
-  RpcRoute,
-} from "./types";
+import type { ExtractRpcResponse, RpcClientMessage, RpcRoute } from "./types";
 
 async function sendMessage<R extends RpcRoute>(
-  message: ExtractMessageType<R>
-): Promise<ExtractResponseType<R>> {
+  message: RpcClientMessage<R>
+): Promise<ExtractRpcResponse<R>> {
   const [tab] = await chrome.tabs.query({
     active: true,
     lastFocusedWindow: true,
@@ -16,7 +12,7 @@ async function sendMessage<R extends RpcRoute>(
   const response = (await chrome.tabs.sendMessage(
     tab.id,
     message
-  )) as ExtractResponseType<R>;
+  )) as ExtractRpcResponse<R>;
 
   return response;
 }

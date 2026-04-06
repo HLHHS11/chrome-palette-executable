@@ -1,9 +1,3 @@
-// TODO: #1 Messageって名前よりRpcRequestって名前のほうがいいかも。そしたらRequestBodyって言葉が使える
-type RpcMessageBase = { name: string };
-
-// TODO: #1 abstract rpc messageとかにしてもいいかも？あるいはdefault rpc messageとか？
-export type RpcMessage = RpcMessageBase & object;
-
 export type VoidResponseBody = Record<string, never>;
 
 export type RpcResponse<ResponseBody extends object = VoidResponseBody> =
@@ -16,22 +10,34 @@ export type RpcResponse<ResponseBody extends object = VoidResponseBody> =
       error: string;
     };
 
+// TODO: #1 Handlerのレスポンスの方に型引数がないのおかしい。
+// NOTE: Handlerのデフォルト型引数にanyを使っている理由:
+// 異なるパラメータ型を持つhandlerを1つのRpcRoute[]に収めるには、関数引数の反変性を回避する必要がある。
+// unknown等では具体的なパラメータ型を持つhandlerが代入不可になるため、anyで型チェックを緩和している。
+// 各ルートの具体的なhandlerシグネチャはas constで推論され、消費側（client等）で型安全に扱われる。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type RpcHandler<Params extends object = any> = (
+  params: Params
+) => RpcResponse | Promise<RpcResponse>;
+
 export type RpcRoute<
-  Message extends RpcMessageBase = RpcMessage,
-  ResponseBody extends object = object,
+  Name extends string = string,
+  Handler extends RpcHandler = RpcHandler,
 > = {
-  message: Message;
-  // TODO: #1 ここの返り値どうするか怪しい。Promiseと同期の管理
-  handler: (
-    params: Omit<Message, "name">
-  ) => RpcResponse<ResponseBody> | Promise<RpcResponse<ResponseBody>>;
+  name: Name;
+  handler: Handler;
 };
 
-export type ExtractMessageType<RouteT extends RpcRoute> = RouteT["message"];
+export type ExtractRpcParams<RouteT extends RpcRoute> = Parameters<
+  RouteT["handler"]
+>[0];
 
-export type ExtractResponseType<RouteT extends RpcRoute> =
-  RouteT["handler"] extends (
-    params: Omit<ExtractMessageType<RouteT>, "name">
-  ) => infer Return
-    ? Awaited<Return>
-    : never;
+export type ExtractRpcResponse<RouteT extends RpcRoute> = Awaited<
+  ReturnType<RouteT["handler"]>
+>;
+
+export type RpcClientMessage<R extends RpcRoute> = R extends RpcRoute
+  ? ExtractRpcParams<R> extends undefined
+    ? { name: R["name"] }
+    : { name: R["name"] } & ExtractRpcParams<R>
+  : never;

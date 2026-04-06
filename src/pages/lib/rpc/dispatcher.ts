@@ -3,7 +3,7 @@ import type { RpcResponse, RpcRoute } from "./types";
 export function registerRoutes(routes: readonly RpcRoute[]): void {
   // NOTE: このaddListenerにはasync関数を使えないので、Promise.resolve()のメソッドチェーンを利用している。
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    const route = routes.find((r) => r.message.name === message?.name);
+    const route = routes.find((r) => r.name === message?.name);
     if (!route) return false;
 
     const { name: _, ...params } = message;
