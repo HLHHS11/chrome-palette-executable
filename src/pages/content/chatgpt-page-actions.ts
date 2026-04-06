@@ -134,3 +134,17 @@ export async function selectChatGptModel(
     return { ok: true, data: {} };
   }
 }
+
+export function openChatGptFileAttach(): RpcResponse<RpcVoidResponseBody> {
+  // ChatGPT は Cmd + U のショートカットをサポートしているため、そのキーボードイベントを発火させる
+  document.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "u",
+      code: "KeyU",
+      metaKey: true, // Cmd (MacOS) / Ctrl (Windows) の押下状態
+      bubbles: true,
+      cancelable: true,
+    })
+  );
+  return { ok: true, data: {} };
+}

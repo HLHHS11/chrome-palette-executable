@@ -74,6 +74,18 @@ async function runSelectThinkingStandard(): Promise<void> {
   window.close();
 }
 
+async function runOpenChatGptFileAttach(): Promise<void> {
+  const res = await rpc({ name: "chatgpt.openFileAttach" });
+  if (!res.ok) {
+    setInputValue(`エラーが発生しました。${res.error}`);
+    console.error(res.error);
+    setTimeout(() => window.close(), 3000);
+    return;
+  }
+
+  window.close();
+}
+
 async function runSelectThinkingExtended(): Promise<void> {
   const res = await rpc({
     name: "chatgpt.selectModel",
@@ -126,6 +138,11 @@ export default function getChatgptCommands(
       title: "ChatGPT: Thinking (GPT-5.4, Extended) モデルを選択",
       subtitle: "ChatGPT: Select Thinking Extended Model",
       command: runSelectThinkingExtended,
+    },
+    {
+      title: "ChatGPT: ファイルを添付",
+      subtitle: "ChatGPT: Attach File",
+      command: runOpenChatGptFileAttach,
     },
   ];
 }

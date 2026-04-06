@@ -2,6 +2,7 @@ import type { RpcRoute } from "../lib/rpc/types";
 import {
   disableChatGptWebSearch,
   enableChatGptWebSearch,
+  openChatGptFileAttach,
   selectChatGptModel,
   toggleChatGptSidebar,
 } from "./chatgpt-page-actions";
@@ -11,4 +12,5 @@ export const routes = [
   { name: "chatgpt.disableWebSearch", handler: disableChatGptWebSearch },
   { name: "chatgpt.toggleSidebar", handler: toggleChatGptSidebar },
   { name: "chatgpt.selectModel", handler: selectChatGptModel },
+  { name: "chatgpt.openFileAttach", handler: openChatGptFileAttach },
 ] as const satisfies readonly RpcRoute[];
