@@ -1,6 +1,6 @@
 export type VoidResponseBody = Record<string, never>;
 
-export type RpcResponse<ResponseBody extends object = VoidResponseBody> =
+export type RpcResponse<ResponseBody extends object = object> =
   | {
       ok: true;
       data: ResponseBody;
