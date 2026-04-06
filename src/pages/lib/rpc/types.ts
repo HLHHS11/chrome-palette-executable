@@ -1,9 +1,10 @@
-export type VoidResponseBody = Record<string, never>;
+// Record<string, never> は空オブジェクト {} を意味する
+export type RpcVoidResponseBody = Record<string, never>;
 
-export type RpcResponse<ResponseBody extends object = object> =
+export type RpcResponse<RpcResponseBody extends object = object> =
   | {
       ok: true;
-      data: ResponseBody;
+      data: RpcResponseBody;
     }
   | {
       // 何も操作をしなかった場合などに用いる
@@ -21,8 +22,8 @@ export type RpcResponse<ResponseBody extends object = object> =
 // unknown等では具体的なパラメータ型を持つhandlerが代入不可になるため、anyで型チェックを緩和している。
 // 各ルートの具体的なhandlerシグネチャはas constで推論され、消費側（client等）で型安全に扱われる。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type RpcHandler<Params extends object = any> = (
-  params: Params
+export type RpcHandler<RpcRequestBody extends object = any> = (
+  params: RpcRequestBody
 ) => RpcResponse | Promise<RpcResponse>;
 
 export type RpcRoute<
@@ -33,16 +34,16 @@ export type RpcRoute<
   handler: Handler;
 };
 
-export type ExtractRpcParams<RouteT extends RpcRoute> = Parameters<
+type ExtractRpcRequestBody<RouteT extends RpcRoute> = Parameters<
   RouteT["handler"]
 >[0];
+
+export type ExtractRpcRequest<RouteT extends RpcRoute> = RouteT extends RpcRoute
+  ? ExtractRpcRequestBody<RouteT> extends undefined
+    ? { name: RouteT["name"] }
+    : { name: RouteT["name"] } & ExtractRpcRequestBody<RouteT>
+  : never;
 
 export type ExtractRpcResponse<RouteT extends RpcRoute> = Awaited<
   ReturnType<RouteT["handler"]>
 >;
-
-export type RpcClientMessage<R extends RpcRoute> = R extends RpcRoute
-  ? ExtractRpcParams<R> extends undefined
-    ? { name: R["name"] }
-    : { name: R["name"] } & ExtractRpcParams<R>
-  : never;

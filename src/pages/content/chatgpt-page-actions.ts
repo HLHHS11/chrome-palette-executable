@@ -3,11 +3,11 @@ import {
   waitForSelector,
   waitUntilValue,
 } from "../lib/dom/selector";
-import { RpcResponse, VoidResponseBody } from "../lib/rpc/types";
+import { RpcResponse, RpcVoidResponseBody } from "../lib/rpc/types";
 
 // TODO: #1 REVERT symbolを返すのは型チェックのため
 export async function enableChatGptWebSearch(): Promise<
-  RpcResponse<VoidResponseBody>
+  RpcResponse<RpcVoidResponseBody>
 > {
   // NOTE: 既にメニューが開いている状態で本コマンドを実行すると、メニューが閉じてしまう。
   // 再度実行すれば良いので今 (260405 Issue #1) 時点では無視するが、丁寧に作り込みたいならメニューの開閉状況確認のロジックを入れても良い。
@@ -39,7 +39,7 @@ export async function enableChatGptWebSearch(): Promise<
   return { ok: true, data: {} };
 }
 
-export function disableChatGptWebSearch(): RpcResponse<VoidResponseBody> {
+export function disableChatGptWebSearch(): RpcResponse<RpcVoidResponseBody> {
   const btn = document.querySelector<HTMLButtonElement>(
     'button[aria-label="検索：クリックして削除"]'
   );
@@ -50,7 +50,7 @@ export function disableChatGptWebSearch(): RpcResponse<VoidResponseBody> {
   return { ok: true, data: {} };
 }
 
-export function toggleChatGptSidebar(): RpcResponse<VoidResponseBody> {
+export function toggleChatGptSidebar(): RpcResponse<RpcVoidResponseBody> {
   const closeBtn = document.querySelector(
     'button[aria-label="サイドバーを閉じる"]'
   );
@@ -95,7 +95,7 @@ const THINKING_EFFORT_LABELS = {
 // TODO: #1 既に選択されている場合にこまるわ。
 export async function selectChatGptModel(
   params: SelectChatGptModelParams
-): Promise<RpcResponse<VoidResponseBody>> {
+): Promise<RpcResponse<RpcVoidResponseBody>> {
   const modelSwitchDropdownButton = await waitForSelector(
     'button[data-testid="model-switcher-dropdown-button"]'
   );
