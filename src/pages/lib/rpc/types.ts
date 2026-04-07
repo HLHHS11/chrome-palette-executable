@@ -16,6 +16,11 @@ export type RpcResponse<RpcResponseBody extends object = object> =
       error: string;
     };
 
+// RPCリクエストの送り主の詳細情報
+export type RpcHandlerContext = {
+  sender: chrome.runtime.MessageSender;
+};
+
 // TODO: #1 Handlerのレスポンスの方に型引数がないのおかしい。
 // NOTE: Handlerのデフォルト型引数にanyを使っている理由:
 // 異なるパラメータ型を持つhandlerを1つのRpcRoute[]に収めるには、関数引数の反変性を回避する必要がある。
@@ -23,7 +28,8 @@ export type RpcResponse<RpcResponseBody extends object = object> =
 // 各ルートの具体的なhandlerシグネチャはas constで推論され、消費側（client等）で型安全に扱われる。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type RpcHandler<RpcRequestBody extends object = any> = (
-  params: RpcRequestBody
+  params: RpcRequestBody,
+  context: RpcHandlerContext
 ) => RpcResponse | Promise<RpcResponse>;
 
 export type RpcRoute<

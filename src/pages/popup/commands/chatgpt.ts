@@ -1,5 +1,5 @@
 import type { routes } from "@src/pages/content/routes";
-import { createRpcClient } from "@src/pages/lib/rpc/client";
+import { createTabsRpcClient } from "@src/pages/lib/rpc/client";
 
 import { inputSignal } from "~/util/signals";
 
@@ -7,10 +7,10 @@ import { Command } from "./general";
 
 const [, setInputValue] = inputSignal;
 
-const rpc = createRpcClient<typeof routes>();
+const callTabsRpc = createTabsRpcClient<typeof routes>();
 
 async function runEnableChatGptWebSearch(): Promise<void> {
-  const res = await rpc({ name: "chatgpt.enableWebSearch" });
+  const res = await callTabsRpc({ name: "chatgpt.enableWebSearch" });
 
   if (!res.ok) {
     setInputValue(`エラーが発生しました。${res.error}`);
@@ -23,7 +23,7 @@ async function runEnableChatGptWebSearch(): Promise<void> {
 }
 
 async function runDisableChatGptWebSearch(): Promise<void> {
-  const res = await rpc({ name: "chatgpt.disableWebSearch" });
+  const res = await callTabsRpc({ name: "chatgpt.disableWebSearch" });
   if (!res.ok) {
     setInputValue(`エラーが発生しました。${res.error}`);
     console.error(res.error);
@@ -35,7 +35,7 @@ async function runDisableChatGptWebSearch(): Promise<void> {
 }
 
 async function runToggleChatGptSidebar(): Promise<void> {
-  const res = await rpc({ name: "chatgpt.toggleSidebar" });
+  const res = await callTabsRpc({ name: "chatgpt.toggleSidebar" });
   if (!res.ok) {
     setInputValue(`エラーが発生しました。${res.error}`);
     console.error(res.error);
@@ -47,7 +47,10 @@ async function runToggleChatGptSidebar(): Promise<void> {
 }
 
 async function runSelectInstantModel(): Promise<void> {
-  const res = await rpc({ name: "chatgpt.selectModel", model: "gpt-5.3" });
+  const res = await callTabsRpc({
+    name: "chatgpt.selectModel",
+    model: "gpt-5.3",
+  });
   if (!res.ok) {
     setInputValue(`エラーが発生しました。${res.error}`);
     console.error(res.error);
@@ -59,7 +62,7 @@ async function runSelectInstantModel(): Promise<void> {
 }
 
 async function runSelectThinkingStandard(): Promise<void> {
-  const res = await rpc({
+  const res = await callTabsRpc({
     name: "chatgpt.selectModel",
     model: "gpt-5.4-thinking",
     thinkingEffort: "standard",
@@ -75,7 +78,7 @@ async function runSelectThinkingStandard(): Promise<void> {
 }
 
 async function runOpenChatGptFileAttach(): Promise<void> {
-  const res = await rpc({ name: "chatgpt.openFileAttach" });
+  const res = await callTabsRpc({ name: "chatgpt.openFileAttach" });
   if (!res.ok) {
     setInputValue(`エラーが発生しました。${res.error}`);
     console.error(res.error);
@@ -87,7 +90,7 @@ async function runOpenChatGptFileAttach(): Promise<void> {
 }
 
 async function runSelectThinkingExtended(): Promise<void> {
-  const res = await rpc({
+  const res = await callTabsRpc({
     name: "chatgpt.selectModel",
     model: "gpt-5.4-thinking",
     thinkingEffort: "extended",

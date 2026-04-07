@@ -1,3 +1,7 @@
+// TODO: #1 REFACTOR
+import type { backgroundRoutes } from "../background/routes";
+import { createRuntimeRpcClient } from "../lib/rpc/client";
+
 const ANCHOR_SELECTORS = [
   "#thread-bottom-container",
   "#thread-bottom",
@@ -7,6 +11,7 @@ const ANCHOR_SELECTORS = [
 const STOP_BUTTON_SELECTOR = 'button[data-testid="stop-button"]';
 const NOTIFY_COOLDOWN_MS = 1500;
 const HEALTHCHECK_INTERVAL_MS = 2000;
+const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
 function resolveAnchor(): Element | null {
   for (const selector of ANCHOR_SELECTORS) {
@@ -21,8 +26,8 @@ function isGenerating(): boolean {
 }
 
 function notifyFinished(): void {
-  void chrome.runtime.sendMessage({
-    type: "chatgpt.notifyAnswerFinished",
+  void callRuntimeRpc({
+    name: "background.notify",
     title: "ChatGPT",
     message: `${document.title} で回答生成が終了しました`,
   });
