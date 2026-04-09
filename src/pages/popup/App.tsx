@@ -24,6 +24,7 @@ import historySuggestions from "./commands/history";
 import switchTabSuggestions from "./commands/tabs";
 import themeSuggestions from "./commands/themes";
 import utilsCopyTabLinkSuggestions from "./commands/utils-copy-tab-link";
+import utilsNotificationSuggestions from "./commands/utils-notification";
 import websitesSuggestions from "./commands/website-search";
 import { sortByUsed, storeLastUsed } from "./util/last-used";
 import { createStoredSignal, inputSignal, parsedInput } from "./util/signals";
@@ -65,6 +66,7 @@ const allCommands = createMemo(() => {
     ...websitesSuggestions(),
     ...themeSuggestions(),
     ...utilsCopyTabLinkSuggestions(),
+    ...utilsNotificationSuggestions(),
   ];
   sortByUsed(commands);
   return commands;

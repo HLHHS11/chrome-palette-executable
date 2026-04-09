@@ -29,8 +29,13 @@ function isGenerating(): boolean {
 function notifyFinished(): void {
   void callRuntimeRpc({
     name: "common.notify",
-    title: "ChatGPT",
-    message: `${document.title} で回答生成が終了しました`,
+    options: {
+      type: "basic",
+      iconUrl: "https://chatgpt.com/favicon.ico",
+      title: "ChatGPT",
+      message: `${document.title} で回答生成が終了しました`,
+    },
+    ttlMs: 15_000,
   });
 }
 
