@@ -6,6 +6,7 @@ import {
   selectChatGptModel,
   toggleChatGptSidebar,
 } from "./chatgpt-page-actions";
+import { startGmailArchiveMode } from "./gmail-page-actions";
 
 export const routes = [
   { name: "chatgpt.enableWebSearch", handler: enableChatGptWebSearch },
@@ -13,4 +14,5 @@ export const routes = [
   { name: "chatgpt.toggleSidebar", handler: toggleChatGptSidebar },
   { name: "chatgpt.selectModel", handler: selectChatGptModel },
   { name: "chatgpt.openFileAttach", handler: openChatGptFileAttach },
+  { name: "gmail.archive", handler: startGmailArchiveMode },
 ] as const satisfies readonly RpcRoute[];

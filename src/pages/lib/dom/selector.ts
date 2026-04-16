@@ -91,3 +91,55 @@ export function simulateMouseClick(el: Element): void {
   );
   el.dispatchEvent(new MouseEvent("click", base));
 }
+
+/**
+ * hover/down/up/click を順に発火して、UIの厳密なクリック条件に寄せます。
+ */
+export function simulateMouseClickSequence(el: Element): void {
+  const rect = el.getBoundingClientRect();
+  if (!rect.width || !rect.height) {
+    throw new Error(`Element has no size. (element: ${el})`);
+  }
+
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const pointerId = Math.floor(Math.random() * 1000) + 1;
+
+  const pointerDownBase: PointerEventInit = {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    clientX: cx,
+    clientY: cy,
+    pointerId,
+    pointerType: "mouse",
+    isPrimary: true,
+    button: 0,
+    buttons: 1,
+  };
+  const pointerUpBase: PointerEventInit = {
+    ...pointerDownBase,
+    buttons: 0,
+  };
+  const mouseDownBase: MouseEventInit = {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    clientX: cx,
+    clientY: cy,
+    button: 0,
+    buttons: 1,
+  };
+  const mouseUpBase: MouseEventInit = {
+    ...mouseDownBase,
+    buttons: 0,
+  };
+
+  el.dispatchEvent(new PointerEvent("pointerover", pointerDownBase));
+  el.dispatchEvent(new MouseEvent("mouseover", mouseDownBase));
+  el.dispatchEvent(new PointerEvent("pointerdown", pointerDownBase));
+  el.dispatchEvent(new MouseEvent("mousedown", mouseDownBase));
+  el.dispatchEvent(new PointerEvent("pointerup", pointerUpBase));
+  el.dispatchEvent(new MouseEvent("mouseup", mouseUpBase));
+  el.dispatchEvent(new MouseEvent("click", mouseUpBase));
+}

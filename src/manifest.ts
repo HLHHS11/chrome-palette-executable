@@ -40,7 +40,7 @@ const manifest = defineManifest(async () => ({
   // TODO: #1 これ、正直matchesはあらゆるwebページにしちゃっても困らない気はするんだよな
   content_scripts: [
     {
-      matches: ["https://chatgpt.com/*"],
+      matches: ["https://chatgpt.com/*", "https://mail.google.com/*"],
       js: ["src/pages/content/main.ts"],
       run_at: "document_idle",
     },

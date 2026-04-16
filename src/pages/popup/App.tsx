@@ -20,6 +20,7 @@ import chatgptSuggestions from "./commands/chatgpt";
 import extenionsSuggestions from "./commands/extensions";
 import geminiSuggestions from "./commands/gemini";
 import generalSuggestions, { Command } from "./commands/general";
+import gmailSuggestions from "./commands/gmail";
 import historySuggestions from "./commands/history";
 import switchTabSuggestions from "./commands/tabs";
 import themeSuggestions from "./commands/themes";
@@ -63,6 +64,7 @@ const allCommands = createMemo(() => {
     ...extenionsSuggestions(),
     ...chatgptSuggestions(pageUrl),
     ...geminiSuggestions(pageUrl),
+    ...gmailSuggestions(pageUrl),
     ...websitesSuggestions(),
     ...themeSuggestions(),
     ...utilsCopyTabLinkSuggestions(),
