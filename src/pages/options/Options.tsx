@@ -1,6 +1,6 @@
-import logo from "@assets/img/logo.svg";
-import "@src/styles/index.css";
 import styles from "./Options.module.css";
+
+import logo from "@assets/img/logo.svg";
 
 const Options = () => {
   return (
