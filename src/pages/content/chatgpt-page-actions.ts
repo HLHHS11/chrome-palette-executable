@@ -80,18 +80,6 @@ type SelectChatGptModelParams =
       thinkingEffort: "standard" | "extended";
     };
 
-/** {@link SelectChatGptModelParams} のモデル名に対応する実DOM上のdata-testid対応関係 */
-const MODEL_TEST_IDS = {
-  "gpt-5.3": "model-switcher-gpt-5-3",
-  "gpt-5.4-thinking": "model-switcher-gpt-5-4-thinking",
-} as const;
-
-/** {@link SelectChatGptModelParams} のthinking effortの値に対応する実DOM上のラベル対応関係 */
-const THINKING_EFFORT_LABELS = {
-  standard: "標準",
-  extended: "拡張",
-} as const;
-
 // TODO: #1 既に選択されている場合にこまるわ。
 export async function selectChatGptModel(
   params: SelectChatGptModelParams
@@ -101,9 +89,15 @@ export async function selectChatGptModel(
   );
   simulateMouseClick(modelSwitchDropdownButton);
 
-  const modelButton = await waitForSelector(
-    `div[data-testid="${MODEL_TEST_IDS[params.model]}"]`
-  );
+  const model = (() => {
+    switch (params.model) {
+      case "gpt-5.3":
+        return "model-switcher-gpt-5-3";
+      case "gpt-5.4-thinking":
+        return "model-switcher-gpt-5-4-thinking";
+    }
+  })();
+  const modelButton = await waitForSelector(`div[data-testid="${model}"]`);
   simulateMouseClick(modelButton);
 
   if (params.model === "gpt-5.3") {
@@ -111,7 +105,34 @@ export async function selectChatGptModel(
     return { ok: true, data: {} };
   } else {
     // thinkingモデルの場合、さらにthinking effortを選択
-    const label = THINKING_EFFORT_LABELS[params.thinkingEffort];
+
+    const thinkingEffortExpandButtonResult = await waitUntilValue(() => {
+      // フッターに存在する２つ目 (zero-basedなら1つ目) のbuttonタグを押せば、thinking effortの選択ドロップダウンを展開できる
+      const expandButton = document
+        .querySelector('[data-testid="composer-footer-actions"]')
+        ?.querySelectorAll("button")?.[1];
+
+      return expandButton
+        ? { status: "found", value: expandButton }
+        : { status: "pending", value: null };
+    });
+    if (thinkingEffortExpandButtonResult.status !== "found") {
+      return {
+        ok: false,
+        error:
+          "thinking effortの選択ドロップダウンを開くためのボタンが見つかりません。",
+      };
+    }
+    simulateMouseClick(thinkingEffortExpandButtonResult.value);
+
+    const label = (() => {
+      switch (params.thinkingEffort) {
+        case "standard":
+          return "標準";
+        case "extended":
+          return "拡張";
+      }
+    })();
 
     const effortDivResult = await waitUntilValue(() => {
       const candidateDivElms = document.querySelectorAll("div.truncate");
