@@ -20,6 +20,7 @@
     "start:prod": "vite build --watch",
     "build": "vite build && rm chrome-palette.zip && zip -r9 chrome-palette.zip dist/",
     "lint": "eslint . --fix -c .eslintrc --ext js,ts --ignore-pattern='!.*'",
+    "format": "prettier . --write",
     "dev:nodemon": "nodemon",
     "analyse-bundle": "npx vite-bundle-visualizer",
     "upgrade-deps": "npx npm-upgrade",
