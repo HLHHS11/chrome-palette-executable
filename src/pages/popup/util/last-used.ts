@@ -1,4 +1,4 @@
-import { Command } from "~/commands/general";
+import type { Command } from "@pages/core/command";
 
 let store: string[] = JSON.parse(localStorage.lastUsed || "[]");
 

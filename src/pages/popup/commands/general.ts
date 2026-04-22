@@ -1,19 +1,10 @@
 // adapted from https://github.com/ssundarraj/commander/blob/master/src/js/actions.js
+import type { Command } from "@pages/core/command";
+
 import { resetHistory } from "~/util/last-used";
 import { inputSignal, parsedInput } from "~/util/signals";
 
 import { isTruthy } from "../util/isTruthy";
-
-export type Command = {
-  title: string;
-  subtitle?: string;
-  shortcut?: string;
-  lastVisitTime?: number;
-  keyword?: string;
-  icon?: string;
-  command?: () => unknown;
-  url?: string;
-};
 
 const [, setInputValue] = inputSignal;
 
@@ -299,7 +290,6 @@ const base: Command[] = [
         currentWindow: true,
         active: true,
       });
-      //@ts-ignore availLeft is missing from screen
       const { availLeft, availTop, availHeight, availWidth } =
         screen as Screen & { availLeft: number; availTop: number };
       const currentWindow = await chrome.windows.getCurrent();

@@ -1,11 +1,12 @@
+import type { Command } from "@pages/core/command";
+
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
-import { Command } from "./general";
 
 const KEYWORD = "e";
 
-const commands = createLazyResource<Command[]>([], async (setVal) => {
+const commands = createLazyResource<Command[]>([], async (_setVal) => {
   return (await chrome.management.getAll()).map(
     ({ name, icons, id, enabled, version, description }) => {
       return {

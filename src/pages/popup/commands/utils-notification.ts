@@ -1,9 +1,8 @@
+import type { Command } from "@pages/core/command";
 import { backgroundRoutes } from "@src/pages/background/routes";
 import { createRuntimeRpcClient } from "@src/pages/lib/rpc/client";
 
 import { inputSignal } from "~/util/signals";
-
-import type { Command } from "./general";
 
 const [, setInputValue] = inputSignal;
 const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();

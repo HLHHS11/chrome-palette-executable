@@ -1,6 +1,6 @@
-import { inputSignal } from "~/util/signals";
+import type { Command } from "@pages/core/command";
 
-import { Command } from "./general";
+import { inputSignal } from "~/util/signals";
 
 const [, setInputValue] = inputSignal;
 

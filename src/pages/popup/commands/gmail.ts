@@ -1,9 +1,8 @@
+import type { Command } from "@pages/core/command";
 import type { routes } from "@src/pages/content/routes";
 import { createTabsRpcClient } from "@src/pages/lib/rpc/client";
 
 import { inputSignal } from "~/util/signals";
-
-import { Command } from "./general";
 
 const [, setInputValue] = inputSignal;
 

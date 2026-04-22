@@ -1,5 +1,6 @@
 import "./App.scss";
 
+import type { Command } from "@pages/core/command";
 import fuzzysort from "fuzzysort";
 import InfiniteScroll from "solid-infinite-scroll";
 import {
@@ -19,7 +20,7 @@ import bookmarkSuggestions from "./commands/bookmarks";
 import chatgptSuggestions from "./commands/chatgpt";
 import extenionsSuggestions from "./commands/extensions";
 import geminiSuggestions from "./commands/gemini";
-import generalSuggestions, { Command } from "./commands/general";
+import generalSuggestions from "./commands/general";
 import gmailSuggestions from "./commands/gmail";
 import historySuggestions from "./commands/history";
 import switchTabSuggestions from "./commands/tabs";

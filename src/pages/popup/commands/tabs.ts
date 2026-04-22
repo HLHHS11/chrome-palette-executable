@@ -1,8 +1,9 @@
+import type { Command } from "@pages/core/command";
+
 import niceUrl from "~/util/nice-url";
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
-import { Command } from "./general";
 
 const KEYWORD = "t";
 

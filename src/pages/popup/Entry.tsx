@@ -1,13 +1,13 @@
 // render inside top level Solid component
 import "./Entry.scss";
 
+import type { Command } from "@pages/core/command";
 import { Show, createEffect, createMemo } from "solid-js";
 import twas from "twas";
 
 import { runCommand } from "./App";
 import Keyword from "./Keyword";
 import Shortcut from "./Shortcut";
-import { Command } from "./commands/general";
 import { parsedInput } from "./util/signals";
 
 export function faviconURL(u?: string) {
