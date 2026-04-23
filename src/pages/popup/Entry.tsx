@@ -51,7 +51,7 @@ export default function Entry(props: {
       classList={{
         selected: props.isSelected,
       }}
-      onclick={() => {
+      onClick={() => {
         runCommand(props.command);
       }}
       ref={(el) => {

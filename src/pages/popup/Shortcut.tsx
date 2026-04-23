@@ -1,6 +1,6 @@
 import "./Shortcut.scss";
 
-import { Show } from "solid-js";
+import { For, Show } from "solid-js";
 
 export default function Shortcut(props: {
   keys?: string;
@@ -17,12 +17,9 @@ export default function Shortcut(props: {
           title={props.onClick && "Click to set extension shortcut"}
           onClick={props.onClick}
         >
-          {keys()
-            .replaceAll(" ", "")
-            .split("")
-            .map((c) => (
-              <kbd>{c}</kbd>
-            ))}
+          <For each={keys().replaceAll(" ", "").split("")}>
+            {(c) => <kbd>{c}</kbd>}
+          </For>
         </span>
       )}
     </Show>
