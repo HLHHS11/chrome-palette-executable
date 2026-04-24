@@ -63,7 +63,7 @@ async function runSelectInstantModel(): Promise<void> {
 async function runSelectThinkingStandard(): Promise<void> {
   const res = await callTabsRpc({
     name: "chatgpt.selectModel",
-    model: "gpt-5.4-thinking",
+    model: "gpt-5.5-thinking",
     thinkingEffort: "standard",
   });
   if (!res.ok) {
@@ -91,7 +91,7 @@ async function runOpenChatGptFileAttach(): Promise<void> {
 async function runSelectThinkingExtended(): Promise<void> {
   const res = await callTabsRpc({
     name: "chatgpt.selectModel",
-    model: "gpt-5.4-thinking",
+    model: "gpt-5.5-thinking",
     thinkingEffort: "extended",
   });
   if (!res.ok) {
@@ -132,12 +132,12 @@ export default function getChatgptCommands(
       command: runSelectInstantModel,
     },
     {
-      title: "ChatGPT: Thinking (GPT-5.4, Standard) モデルを選択",
+      title: "ChatGPT: Thinking (GPT-5.5, Standard) モデルを選択",
       subtitle: "ChatGPT: Select Thinking Standard Model",
       command: runSelectThinkingStandard,
     },
     {
-      title: "ChatGPT: Thinking (GPT-5.4, Extended) モデルを選択",
+      title: "ChatGPT: Thinking (GPT-5.5, Extended) モデルを選択",
       subtitle: "ChatGPT: Select Thinking Extended Model",
       command: runSelectThinkingExtended,
     },

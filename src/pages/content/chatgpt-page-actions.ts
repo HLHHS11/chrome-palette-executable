@@ -76,7 +76,7 @@ type SelectChatGptModelParams =
       model: "gpt-5.3";
     }
   | {
-      model: "gpt-5.4-thinking";
+      model: "gpt-5.5-thinking";
       thinkingEffort: "standard" | "extended";
     };
 
@@ -93,8 +93,8 @@ export async function selectChatGptModel(
     switch (params.model) {
       case "gpt-5.3":
         return "model-switcher-gpt-5-3";
-      case "gpt-5.4-thinking":
-        return "model-switcher-gpt-5-4-thinking";
+      case "gpt-5.5-thinking":
+        return "model-switcher-gpt-5-5-thinking";
     }
   })();
   const modelButton = await waitForSelector(`div[data-testid="${model}"]`);
