@@ -104,6 +104,18 @@ async function runSelectThinkingExtended(): Promise<void> {
   window.close();
 }
 
+async function runStopChatGptGeneration(): Promise<void> {
+  const res = await callTabsRpc({ name: "chatgpt.stopGeneration" });
+  if (!res.ok) {
+    setInputValue(`エラーが発生しました。${res.error}`);
+    console.error(res.error);
+    setTimeout(() => window.close(), 3000);
+    return;
+  }
+
+  window.close();
+}
+
 export default function getChatgptCommands(
   pageUrl: URL | undefined
 ): Command[] {
@@ -145,6 +157,11 @@ export default function getChatgptCommands(
       title: "ChatGPT: ファイルを添付",
       subtitle: "ChatGPT: Attach File",
       command: runOpenChatGptFileAttach,
+    },
+    {
+      title: "ChatGPT: 回答生成を停止",
+      subtitle: "ChatGPT: Stop Generation",
+      command: runStopChatGptGeneration,
     },
   ];
 }

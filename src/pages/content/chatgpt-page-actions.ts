@@ -169,3 +169,14 @@ export function openChatGptFileAttach(): RpcResponse<RpcVoidResponseBody> {
   );
   return { ok: true, data: {} };
 }
+
+export function stopChatGptGeneration(): RpcResponse<RpcVoidResponseBody> {
+  const stopButton = document.querySelector<HTMLElement>(
+    'button[data-testid="stop-button"]'
+  );
+  if (!stopButton) {
+    return { ok: false, error: "回答生成停止ボタンが見つかりません。" };
+  }
+  simulateMouseClick(stopButton);
+  return { ok: true, data: {} };
+}
