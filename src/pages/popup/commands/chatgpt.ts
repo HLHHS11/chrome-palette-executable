@@ -1,124 +1,12 @@
-import type { Command } from "@pages/core/command";
+import type { RpcCommand } from "@pages/core/command";
 import type { routes } from "@src/pages/content/routes";
-import { createTabsRpcClient } from "@src/pages/lib/rpc/client";
+import type { ExtractRpcRequest } from "@src/pages/lib/rpc/types";
 
-import { inputSignal } from "~/util/signals";
-
-const [, setInputValue] = inputSignal;
-
-const callTabsRpc = createTabsRpcClient<typeof routes>();
-
-async function runEnableChatGptWebSearch(): Promise<void> {
-  const res = await callTabsRpc({ name: "chatgpt.enableWebSearch" });
-
-  if (!res.ok) {
-    setInputValue(`エラーが発生しました。${res.error}`);
-    console.error(res.error);
-    setTimeout(() => window.close(), 3000);
-    return;
-  }
-
-  window.close();
-}
-
-async function runDisableChatGptWebSearch(): Promise<void> {
-  const res = await callTabsRpc({ name: "chatgpt.disableWebSearch" });
-  if (!res.ok) {
-    setInputValue(`エラーが発生しました。${res.error}`);
-    console.error(res.error);
-    setTimeout(() => window.close(), 3000);
-    return;
-  }
-
-  window.close();
-}
-
-async function runToggleChatGptSidebar(): Promise<void> {
-  const res = await callTabsRpc({ name: "chatgpt.toggleSidebar" });
-  if (!res.ok) {
-    setInputValue(`エラーが発生しました。${res.error}`);
-    console.error(res.error);
-    setTimeout(() => window.close(), 3000);
-    return;
-  }
-
-  window.close();
-}
-
-async function runSelectInstantModel(): Promise<void> {
-  const res = await callTabsRpc({
-    name: "chatgpt.selectModel",
-    model: "gpt-5.3",
-  });
-  if (!res.ok) {
-    setInputValue(`エラーが発生しました。${res.error}`);
-    console.error(res.error);
-    setTimeout(() => window.close(), 3000);
-    return;
-  }
-
-  window.close();
-}
-
-async function runSelectThinkingStandard(): Promise<void> {
-  const res = await callTabsRpc({
-    name: "chatgpt.selectModel",
-    model: "gpt-5.5-thinking",
-    thinkingEffort: "standard",
-  });
-  if (!res.ok) {
-    setInputValue(`エラーが発生しました。${res.error}`);
-    console.error(res.error);
-    setTimeout(() => window.close(), 3000);
-    return;
-  }
-
-  window.close();
-}
-
-async function runOpenChatGptFileAttach(): Promise<void> {
-  const res = await callTabsRpc({ name: "chatgpt.openFileAttach" });
-  if (!res.ok) {
-    setInputValue(`エラーが発生しました。${res.error}`);
-    console.error(res.error);
-    setTimeout(() => window.close(), 3000);
-    return;
-  }
-
-  window.close();
-}
-
-async function runSelectThinkingExtended(): Promise<void> {
-  const res = await callTabsRpc({
-    name: "chatgpt.selectModel",
-    model: "gpt-5.5-thinking",
-    thinkingEffort: "extended",
-  });
-  if (!res.ok) {
-    setInputValue(`エラーが発生しました。${res.error}`);
-    console.error(res.error);
-    setTimeout(() => window.close(), 3000);
-    return;
-  }
-
-  window.close();
-}
-
-async function runStopChatGptGeneration(): Promise<void> {
-  const res = await callTabsRpc({ name: "chatgpt.stopGeneration" });
-  if (!res.ok) {
-    setInputValue(`エラーが発生しました。${res.error}`);
-    console.error(res.error);
-    setTimeout(() => window.close(), 3000);
-    return;
-  }
-
-  window.close();
-}
+type ContentRpcMessage = ExtractRpcRequest<(typeof routes)[number]>;
 
 export default function getChatgptCommands(
   pageUrl: URL | undefined
-): Command[] {
+): RpcCommand<ContentRpcMessage>[] {
   const isChatGptPage = pageUrl?.hostname === "chatgpt.com";
   if (!isChatGptPage) return [];
 
@@ -126,42 +14,61 @@ export default function getChatgptCommands(
     {
       title: `ChatGPT: サイドバーをトグル`,
       subtitle: "ChatGPT: Toggle Side Bar",
-      handler: runToggleChatGptSidebar,
+      message: { name: "chatgpt.toggleSidebar" },
     },
     {
       title: `ChatGPT: ウェブ検索を有効化`,
       subtitle: "ChatGPT: Enable Web Search",
-      handler: runEnableChatGptWebSearch,
+      message: { name: "chatgpt.enableWebSearch" },
     },
     {
       title: `ChatGPT: ウェブ検索を無効化`,
       subtitle: "ChatGPT: Disable Web Search",
-      handler: runDisableChatGptWebSearch,
+      message: { name: "chatgpt.disableWebSearch" },
     },
     {
       title: "ChatGPT: Instant (GPT-5.3) モデルを選択",
       subtitle: "ChatGPT: Select Instant Model",
-      handler: runSelectInstantModel,
+      message: {
+        name: "chatgpt.selectModel",
+        model: "gpt-5.3",
+      },
     },
     {
       title: "ChatGPT: Thinking (GPT-5.5, Standard) モデルを選択",
       subtitle: "ChatGPT: Select Thinking Standard Model",
-      handler: runSelectThinkingStandard,
+      message: {
+        name: "chatgpt.selectModel",
+        model: "gpt-5.5-thinking",
+        thinkingEffort: "standard",
+      },
     },
     {
       title: "ChatGPT: Thinking (GPT-5.5, Extended) モデルを選択",
       subtitle: "ChatGPT: Select Thinking Extended Model",
-      handler: runSelectThinkingExtended,
+      message: {
+        name: "chatgpt.selectModel",
+        model: "gpt-5.5-thinking",
+        thinkingEffort: "extended",
+      },
     },
     {
       title: "ChatGPT: ファイルを添付",
       subtitle: "ChatGPT: Attach File",
-      handler: runOpenChatGptFileAttach,
+      message: { name: "chatgpt.openFileAttach" },
     },
     {
       title: "ChatGPT: 回答生成を停止",
       subtitle: "ChatGPT: Stop Generation",
-      handler: runStopChatGptGeneration,
+      message: { name: "chatgpt.stopGeneration" },
+      keybind: [
+        {
+          metaKey: true,
+          shiftKey: true,
+          key: "Backspace",
+          preventDefault: true,
+        },
+      ],
     },
   ];
 }

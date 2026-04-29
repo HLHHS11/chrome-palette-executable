@@ -1,7 +1,13 @@
 export {
-  registerCommandKeybindListener,
+  registerKeybindListener,
   type CommandKeybindListenerOptions,
 } from "./listener";
+export { runRpcCommandInPopup } from "./popup-rpc-runner";
 export { stringifyCommandKeybind } from "./display";
 
-export type { Command, CommandKeybind } from "./types";
+export type {
+  Command,
+  CommandKeybind,
+  LegacyCommand,
+  RpcCommand,
+} from "./types";

@@ -12,14 +12,32 @@ export type CommandKeybind = {
   requireTrusted?: boolean;
 };
 
-export type Command = {
+type NonEmptyArray<T> = readonly [T, ...T[]];
+
+type CommandBase = {
   title: string;
   subtitle?: string;
   shortcut?: string;
-  keybind?: readonly CommandKeybind[];
+  keybind?: NonEmptyArray<CommandKeybind>;
   lastVisitTime?: number;
   keyword?: string;
   icon?: string;
-  handler?: () => unknown;
   url?: string;
 };
+
+export type LegacyCommand = CommandBase & {
+  handler?: () => unknown;
+};
+
+//
+/**
+ * TODO: #1 REFACTOR lib/rpc/types.ts との兼ね合いに注意。RpcRequestとか、lib/rpc側で定義したほうがいいかも。
+ * けど、RpcCommand自体は、レガシーなやつと分けるって意味合いの、RPC-Based Commandであるからそこんとこ混同しないようには注意必要
+ * てかこれのジェネリクスってホンマに必要か？？
+ */
+export type RpcCommand<RpcRequest extends object = { name: string }> =
+  CommandBase & {
+    message: RpcRequest;
+  };
+
+export type Command = LegacyCommand | RpcCommand;

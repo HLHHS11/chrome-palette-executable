@@ -1,9 +1,12 @@
-import type { Command, CommandKeybind } from "./types";
+import { routes } from "../../content/routes";
+import type { RpcHandler } from "../../lib/rpc/types";
+import type { CommandKeybind, RpcCommand } from "./types";
 
 export type CommandKeybindListenerOptions = {
-  getCommands: () => readonly Command[];
-  execute: (command: Command, event: KeyboardEvent) => void | Promise<void>;
+  getCommands: () => readonly RpcCommand[];
+  // REVIEW: #1 わざわざここのオプションとして渡す必要あるだろうか！？
   target?: Window | Document;
+  // REVIEW: #1 わざわざここのオプションとして渡す必要あるだろうか！？
   capture?: boolean;
 };
 
@@ -38,7 +41,7 @@ function matchesCommandKeybind(
   return true;
 }
 
-export function registerCommandKeybindListener(
+export function registerKeybindListener(
   options: CommandKeybindListenerOptions
 ): () => void {
   const target = options.target ?? window;
@@ -59,11 +62,41 @@ export function registerCommandKeybindListener(
           event.stopPropagation();
         }
 
-        void Promise.resolve(options.execute(command, event)).catch(
-          (e: unknown) => {
-            console.error(`Command keybind execution failed: ${e}`);
+        // TODO: #1 REFACTOR さすがに中読みにくすぎやろ。型の関係で変なことしすぎ。asも多いし
+        // TODO: #1 REVERT ログを差し込みすぎ
+        const run = async () => {
+          const message = command.message as
+            | ({ name: string } & Record<string, unknown>)
+            | undefined;
+          if (!message?.name) {
+            console.error("[chrome-palette] Invalid RPC message.");
+            return;
           }
-        );
+          const route = routes.find(
+            (candidate) => candidate.name === message.name
+          );
+          if (!route) {
+            console.error(`[chrome-palette] Unknown route: ${message.name}`);
+            return;
+          }
+          const { name: _, ...params } = message;
+          const handler = route.handler as RpcHandler;
+          const res = await Promise.resolve(
+            handler(params as never, {
+              sender: { id: chrome.runtime.id } as chrome.runtime.MessageSender,
+            })
+          );
+          if (res && typeof res === "object" && "ok" in res && !res.ok) {
+            const error =
+              "error" in res && typeof res.error === "string"
+                ? res.error
+                : "Unknown RPC error";
+            console.error(`[chrome-palette] ${error}`);
+          }
+        };
+        void Promise.resolve(run()).catch((e: unknown) => {
+          console.error(`Command keybind execution failed: ${e}`);
+        });
         return;
       }
     }

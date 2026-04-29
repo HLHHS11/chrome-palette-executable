@@ -1,6 +1,13 @@
 import "./App.scss";
 
-import type { Command } from "@pages/core/command";
+import type { routes } from "@pages/content/routes";
+import {
+  type Command,
+  type RpcCommand,
+  runRpcCommandInPopup,
+} from "@pages/core/command";
+import { createTabsRpcClient } from "@pages/lib/rpc/client";
+import type { ExtractRpcRequest } from "@pages/lib/rpc/types";
 import fuzzysort from "fuzzysort";
 import InfiniteScroll from "solid-infinite-scroll";
 import {
@@ -12,23 +19,9 @@ import {
 } from "solid-js";
 import { tinykeys } from "tinykeys";
 
+import { listAllCommands } from "../command";
 import Entry from "./Entry";
 import Shortcut from "./Shortcut";
-import audibleTabSuggestions from "./commands/audio";
-import bookmarkThisSuggestions from "./commands/bookmark-this";
-import bookmarkSuggestions from "./commands/bookmarks";
-import chatgptSuggestions from "./commands/chatgpt";
-import extenionsSuggestions from "./commands/extensions";
-import geminiSuggestions from "./commands/gemini";
-import generalSuggestions from "./commands/general";
-import gmailSuggestions from "./commands/gmail";
-import historySuggestions from "./commands/history";
-import switchTabSuggestions from "./commands/tabs";
-import themeSuggestions from "./commands/themes";
-import utilsCopyTabLinkSuggestions from "./commands/utils-copy-tab-link";
-import utilsNotificationSuggestions from "./commands/utils-notification";
-import websitesSuggestions from "./commands/website-search";
-import youtubeSuggestions from "./commands/youtube";
 import { sortByUsed, storeLastUsed } from "./util/last-used";
 import { createStoredSignal, inputSignal, parsedInput } from "./util/signals";
 
@@ -41,6 +34,10 @@ chrome.commands.getAll().then((commands) => {
 });
 
 const [inputValue, setInputValue] = inputSignal;
+// TODO: #1 REFACTOR runRpcCommandInPopupの設計上の都合もあって、クライアント作成やExtractが必要になるのは気持ち悪い。
+// 修正したいところ。
+const callTabsRpc = createTabsRpcClient<typeof routes>();
+type ContentRpcMessage = ExtractRpcRequest<(typeof routes)[number]>;
 
 const [activeTabPageUrl] = createResource(
   async (): Promise<URL | undefined> => {
@@ -56,23 +53,7 @@ const [activeTabPageUrl] = createResource(
 
 const allCommands = createMemo(() => {
   const pageUrl = activeTabPageUrl();
-  const commands: Command[] = [
-    ...generalSuggestions(),
-    ...audibleTabSuggestions(),
-    ...bookmarkThisSuggestions(),
-    ...switchTabSuggestions(),
-    ...historySuggestions(),
-    ...bookmarkSuggestions(),
-    ...extenionsSuggestions(),
-    ...chatgptSuggestions(pageUrl),
-    ...geminiSuggestions(pageUrl),
-    ...gmailSuggestions(pageUrl),
-    ...youtubeSuggestions(pageUrl),
-    ...websitesSuggestions(),
-    ...themeSuggestions(),
-    ...utilsCopyTabLinkSuggestions(),
-    ...utilsNotificationSuggestions(),
-  ];
+  const commands = listAllCommands(pageUrl);
   sortByUsed(commands);
   return commands;
 });
@@ -113,9 +94,17 @@ createEffect(() => {
   setSelectedI(0);
 });
 
+// TODO: #1 REFACTOR そもそもApp.tsxにおいておくべきじゃない
 export const runCommand = async (command: Command) => {
   storeLastUsed(command);
-  if ("url" in command) chrome.tabs.create({ url: command.url });
+  if ("message" in command) {
+    await runRpcCommandInPopup(command as RpcCommand<ContentRpcMessage>, {
+      callTabsRpc,
+      setInputValue,
+    });
+    return;
+  }
+  if (command.url) chrome.tabs.create({ url: command.url });
   command.handler?.();
 };
 
