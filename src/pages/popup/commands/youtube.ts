@@ -40,7 +40,7 @@ export default function getYouTubeCommands(
     {
       title: "YouTube: ショート動画を通常プレイヤーで開く",
       subtitle: "YouTube: Open shorts in watch player",
-      command: () => runOpenShortInWatchPlayer(videoId),
+      handler: () => runOpenShortInWatchPlayer(videoId),
     },
   ];
 }

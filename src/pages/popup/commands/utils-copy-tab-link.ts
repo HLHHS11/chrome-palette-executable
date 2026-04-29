@@ -87,12 +87,12 @@ export default function getUtilsCopyTabLinkCommands(): Command[] {
     {
       title: "Utils: マークダウン形式で現在のタブのリンクをコピー",
       subtitle: "Utils: Copy Active Tab Link as Markdown",
-      command: runCopyMarkdownTabLink,
+      handler: runCopyMarkdownTabLink,
     },
     {
       title: "Utils: リッチテキストで現在のタブのリンクをコピー",
       subtitle: "Utils: Copy Active Tab Link as Rich Text",
-      command: runCopyRichTextTabLink,
+      handler: runCopyRichTextTabLink,
     },
   ];
 }

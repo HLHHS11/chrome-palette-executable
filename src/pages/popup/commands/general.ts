@@ -20,14 +20,14 @@ const base: Command[] = [
   {
     title: "New Tab",
     shortcut: "⌘ t",
-    command: async function () {
+    handler: async function () {
       await chrome.tabs.create({});
     },
   },
   {
     title: "New Window",
     shortcut: "⌘ n",
-    command: async function () {
+    handler: async function () {
       await chrome.windows.create({});
     },
   },
@@ -61,7 +61,7 @@ const base: Command[] = [
   {
     title: "Show/hide Bookmarks Bar",
     shortcut: "⌘⇧ b",
-    command: async function () {
+    handler: async function () {
       setInputValue("Unsupported. Use [⌘⇧ b] instead.");
     },
   },
@@ -73,7 +73,7 @@ const base: Command[] = [
   {
     title: "Close Current Tab",
     shortcut: "⌘ w",
-    command: async function () {
+    handler: async function () {
       const currentTab = await getActiveTab();
       await chrome.tabs.remove(currentTab.id!);
     },
@@ -98,14 +98,14 @@ const base: Command[] = [
   {
     title: "Reload Tab",
     shortcut: "⌘ r",
-    command: async function () {
+    handler: async function () {
       await chrome.tabs.reload();
       window.close();
     },
   },
   {
     title: "Reload All Tabs",
-    command: async function () {
+    handler: async function () {
       const windowId = chrome.windows.WINDOW_ID_CURRENT;
       const allTabIds = (await chrome.tabs.query({ windowId }))
         .map(({ id }) => id)
@@ -119,7 +119,7 @@ const base: Command[] = [
   {
     title: "Clear Cache and Reload Tab",
     shortcut: "⌘⇧ r",
-    command: async function () {
+    handler: async function () {
       const tab = await getActiveTab();
       await chrome.tabs.reload(tab.id!, { bypassCache: true });
       window.close();
@@ -127,7 +127,7 @@ const base: Command[] = [
   },
   {
     title: "Toggle Pin",
-    command: async function () {
+    handler: async function () {
       const currentTab = await getActiveTab();
       await chrome.tabs.update({ pinned: !currentTab.pinned });
       window.close();
@@ -135,7 +135,7 @@ const base: Command[] = [
   },
   {
     title: "Duplicate Tab",
-    command: async function () {
+    handler: async function () {
       const currentTab = await getActiveTab();
       await chrome.tabs.duplicate(currentTab.id!);
     },
@@ -143,13 +143,13 @@ const base: Command[] = [
   {
     title: "New Incognito Window",
     shortcut: "⌘⇧ n",
-    command: async function () {
+    handler: async function () {
       await chrome.windows.create({ incognito: true });
     },
   },
   {
     title: "Close Other Tabs",
-    command: async function () {
+    handler: async function () {
       const windowId = chrome.windows.WINDOW_ID_CURRENT;
       const otherTabs = await chrome.tabs.query({
         active: false,
@@ -162,7 +162,7 @@ const base: Command[] = [
   },
   {
     title: "Close Tabs To Right",
-    command: async function () {
+    handler: async function () {
       const windowId = chrome.windows.WINDOW_ID_CURRENT;
       const currentTab = await getActiveTab();
       const otherTabs = await chrome.tabs.query({
@@ -178,7 +178,7 @@ const base: Command[] = [
   },
   {
     title: "Close Tabs To Left",
-    command: async function () {
+    handler: async function () {
       const currentTab = await getActiveTab();
       const windowId = chrome.windows.WINDOW_ID_CURRENT;
       const otherTabs = await chrome.tabs.query({
@@ -194,7 +194,7 @@ const base: Command[] = [
   },
   {
     title: "Mute/Unmute Tab",
-    command: async function () {
+    handler: async function () {
       const currentTab = await getActiveTab();
       const isMuted = currentTab.mutedInfo!.muted;
       await chrome.tabs.update({ muted: !isMuted });
@@ -203,7 +203,7 @@ const base: Command[] = [
   },
   {
     title: "Move Tab To Start",
-    command: async function () {
+    handler: async function () {
       const currentTab = await getActiveTab();
       await chrome.tabs.move(currentTab.id!, { index: 0 });
       window.close();
@@ -211,7 +211,7 @@ const base: Command[] = [
   },
   {
     title: "Move Tab To End",
-    command: async function () {
+    handler: async function () {
       const currentTab = await getActiveTab();
       await chrome.tabs.move(currentTab.id!, { index: -1 });
       window.close();
@@ -219,7 +219,7 @@ const base: Command[] = [
   },
   {
     title: "Move Tab Left",
-    command: async function () {
+    handler: async function () {
       const currentTab = await getActiveTab();
       await chrome.tabs.move(currentTab.id!, {
         index: currentTab.index - 1,
@@ -229,7 +229,7 @@ const base: Command[] = [
   },
   {
     title: "Move Tab Right",
-    command: async function () {
+    handler: async function () {
       const currentTab = await getActiveTab();
       await chrome.tabs.move(currentTab.id!, {
         index: currentTab.index + 1,
@@ -240,13 +240,13 @@ const base: Command[] = [
   {
     title: "Reopen/Unclose Tab",
     shortcut: "⌘⇧ t",
-    command: async function () {
+    handler: async function () {
       return await chrome.sessions.restore();
     },
   },
   {
     title: "Deattach Tab (Move to New Window)",
-    command: async function () {
+    handler: async function () {
       const [tab] = await chrome.tabs.query({
         currentWindow: true,
         active: true,
@@ -256,7 +256,7 @@ const base: Command[] = [
   },
   {
     title: "Split screen (vertical)",
-    command: async function () {
+    handler: async function () {
       const [tab] = await chrome.tabs.query({
         currentWindow: true,
         active: true,
@@ -285,7 +285,7 @@ const base: Command[] = [
   },
   {
     title: "Split screen (horizontal)",
-    command: async function () {
+    handler: async function () {
       const [tab] = await chrome.tabs.query({
         currentWindow: true,
         active: true,
@@ -313,7 +313,7 @@ const base: Command[] = [
   },
   {
     title: "Reattach Tab (Move Tab to Previous Window)",
-    command: async function () {
+    handler: async function () {
       const [currentTab] = await chrome.tabs.query({
         currentWindow: true,
         active: true,
@@ -339,7 +339,7 @@ const base: Command[] = [
   {
     title: "Toggle full screen",
     shortcut: "⌃⌘ f",
-    command: async function () {
+    handler: async function () {
       const currWindow = await chrome.windows.getCurrent();
       const state = currWindow.state === "fullscreen" ? "normal" : "fullscreen";
       chrome.windows.update(currWindow.id!, {
@@ -452,7 +452,7 @@ const base: Command[] = [
   {
     title: "Reset command history",
     subtitle: "Resets the order of commands in this extension",
-    command: async function () {
+    handler: async function () {
       setTimeout(() => {
         // otherwise this command will be stored
         resetHistory();

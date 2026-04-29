@@ -126,42 +126,42 @@ export default function getChatgptCommands(
     {
       title: `ChatGPT: サイドバーをトグル`,
       subtitle: "ChatGPT: Toggle Side Bar",
-      command: runToggleChatGptSidebar,
+      handler: runToggleChatGptSidebar,
     },
     {
       title: `ChatGPT: ウェブ検索を有効化`,
       subtitle: "ChatGPT: Enable Web Search",
-      command: runEnableChatGptWebSearch,
+      handler: runEnableChatGptWebSearch,
     },
     {
       title: `ChatGPT: ウェブ検索を無効化`,
       subtitle: "ChatGPT: Disable Web Search",
-      command: runDisableChatGptWebSearch,
+      handler: runDisableChatGptWebSearch,
     },
     {
       title: "ChatGPT: Instant (GPT-5.3) モデルを選択",
       subtitle: "ChatGPT: Select Instant Model",
-      command: runSelectInstantModel,
+      handler: runSelectInstantModel,
     },
     {
       title: "ChatGPT: Thinking (GPT-5.5, Standard) モデルを選択",
       subtitle: "ChatGPT: Select Thinking Standard Model",
-      command: runSelectThinkingStandard,
+      handler: runSelectThinkingStandard,
     },
     {
       title: "ChatGPT: Thinking (GPT-5.5, Extended) モデルを選択",
       subtitle: "ChatGPT: Select Thinking Extended Model",
-      command: runSelectThinkingExtended,
+      handler: runSelectThinkingExtended,
     },
     {
       title: "ChatGPT: ファイルを添付",
       subtitle: "ChatGPT: Attach File",
-      command: runOpenChatGptFileAttach,
+      handler: runOpenChatGptFileAttach,
     },
     {
       title: "ChatGPT: 回答生成を停止",
       subtitle: "ChatGPT: Stop Generation",
-      command: runStopChatGptGeneration,
+      handler: runStopChatGptGeneration,
     },
   ];
 }

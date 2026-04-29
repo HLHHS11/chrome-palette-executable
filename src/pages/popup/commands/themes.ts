@@ -44,7 +44,7 @@ const commands = (): Command[] =>
 const base: Command[] = [
   {
     title: "Chrome Palette Themes",
-    command: async function () {
+    handler: async function () {
       setInput(KEYWORD + ">");
     },
     keyword: KEYWORD + ">",

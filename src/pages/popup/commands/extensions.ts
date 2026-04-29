@@ -28,7 +28,7 @@ const base: Command[] = [
   {
     title: "Search Extensions",
     icon: faviconURL("chrome://extensions/"),
-    command: async function () {
+    handler: async function () {
       setInput(KEYWORD + ">");
     },
     keyword: KEYWORD + ">",

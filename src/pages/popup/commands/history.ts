@@ -53,7 +53,7 @@ const base: Command[] = [
   {
     title: "Search History",
     icon: faviconURL("chrome://history/"),
-    command: async function () {
+    handler: async function () {
       setInput(KEYWORD + ">");
     },
     keyword: KEYWORD + ">",

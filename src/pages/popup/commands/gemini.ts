@@ -37,7 +37,7 @@ export default function getGeminiCommands(pageUrl: URL | undefined): Command[] {
     {
       title: "Gemini: サイドバーをトグル",
       subtitle: `Gemini: Toggle Side Bar`,
-      command: runToggleGeminiSideBar,
+      handler: runToggleGeminiSideBar,
     },
   ];
 }

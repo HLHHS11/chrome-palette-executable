@@ -20,6 +20,6 @@ export type Command = {
   lastVisitTime?: number;
   keyword?: string;
   icon?: string;
-  command?: () => unknown;
+  handler?: () => unknown;
   url?: string;
 };

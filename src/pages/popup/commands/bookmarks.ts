@@ -35,7 +35,7 @@ const commands = createLazyResource([], async () => {
 const base: Command[] = [
   {
     title: "Search Bookmarks",
-    command: async function () {
+    handler: async function () {
       setInput(KEYWORD + ">");
     },
     icon: faviconURL("chrome://bookmarks/"),

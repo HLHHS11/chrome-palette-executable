@@ -116,7 +116,7 @@ createEffect(() => {
 export const runCommand = async (command: Command) => {
   storeLastUsed(command);
   if ("url" in command) chrome.tabs.create({ url: command.url });
-  command.command?.();
+  command.handler?.();
 };
 
 tinykeys(window, {

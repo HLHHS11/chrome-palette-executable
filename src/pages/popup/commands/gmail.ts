@@ -28,7 +28,7 @@ export default function getGmailCommands(pageUrl: URL | undefined): Command[] {
     {
       title: "Gmail: アーカイブ（キー待ち）",
       subtitle: "Gmail: Archive after Enter/Space",
-      command: runArchiveOnGmail,
+      handler: runArchiveOnGmail,
     },
   ];
 }

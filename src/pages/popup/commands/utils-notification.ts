@@ -33,7 +33,7 @@ export default function utilsNotificationSuggestions(): Command[] {
     {
       title: "Utils: Hello World通知を送信",
       subtitle: "Utils: Send Hello World Notification",
-      command: runSendHelloWorldNotification,
+      handler: runSendHelloWorldNotification,
     },
   ];
 }

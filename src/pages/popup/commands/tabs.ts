@@ -15,7 +15,7 @@ const commands = createLazyResource<Command[]>([], async () => {
       title: title || "Untitled",
       subtitle: niceUrl(url),
       icon: faviconURL(url),
-      command: () => {
+      handler: () => {
         chrome.tabs.update(id!, { highlighted: true });
         chrome.windows.update(windowId!, { focused: true });
         window.close();
@@ -27,7 +27,7 @@ const commands = createLazyResource<Command[]>([], async () => {
 const base: Command[] = [
   {
     title: "Search Tabs",
-    command: async function () {
+    handler: async function () {
       setInput(KEYWORD + ">");
     },
     keyword: KEYWORD + ">",
