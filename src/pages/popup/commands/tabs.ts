@@ -1,4 +1,4 @@
-import type { Command } from "@pages/core/command";
+import type { Command } from "@core/command";
 
 import niceUrl from "~/util/nice-url";
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";

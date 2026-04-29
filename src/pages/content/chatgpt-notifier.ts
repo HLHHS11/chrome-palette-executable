@@ -1,5 +1,6 @@
+import { createRuntimeRpcClient } from "@core/rpc";
+
 import { backgroundRoutes } from "../background/routes";
-import { createRuntimeRpcClient } from "../lib/rpc/client";
 
 const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 

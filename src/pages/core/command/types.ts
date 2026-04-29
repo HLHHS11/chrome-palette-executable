@@ -31,7 +31,7 @@ export type LegacyCommand = CommandBase & {
 
 //
 /**
- * TODO: #1 REFACTOR lib/rpc/types.ts との兼ね合いに注意。RpcRequestとか、lib/rpc側で定義したほうがいいかも。
+ * TODO: #1 REFACTOR core/rpc/types.ts との兼ね合いに注意。RpcRequestとか、core/rpc側で定義したほうがいいかも。
  * けど、RpcCommand自体は、レガシーなやつと分けるって意味合いの、RPC-Based Commandであるからそこんとこ混同しないようには注意必要
  * てかこれのジェネリクスってホンマに必要か？？
  */

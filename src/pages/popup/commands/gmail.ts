@@ -1,6 +1,6 @@
-import type { Command } from "@pages/core/command";
+import type { Command } from "@core/command";
+import { createTabsRpcClient } from "@core/rpc";
 import type { routes } from "@src/pages/content/routes";
-import { createTabsRpcClient } from "@src/pages/lib/rpc/client";
 
 import { inputSignal } from "~/util/signals";
 

@@ -1,6 +1,6 @@
-import type { RpcCommand } from "@pages/core/command";
+import type { RpcCommand } from "@core/command";
+import type { ExtractRpcRequest } from "@core/rpc";
 import type { routes } from "@src/pages/content/routes";
-import type { ExtractRpcRequest } from "@src/pages/lib/rpc/types";
 
 type ContentRpcMessage = ExtractRpcRequest<(typeof routes)[number]>;
 

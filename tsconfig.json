@@ -18,6 +18,7 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "forceConsistentCasingInFileNames": true,
     "paths": {
+      "@core/*": ["src/pages/core/*"],
       "@src/*": ["src/*"],
       "@assets/*": ["src/assets/*"],
       "@pages/*": ["src/pages/*"],

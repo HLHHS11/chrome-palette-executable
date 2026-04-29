@@ -1,4 +1,4 @@
-import type { Command } from "@pages/core/command";
+import type { Command } from "@core/command";
 
 import { matchCommand, parsedInput, setInput } from "~/util/signals";
 

@@ -1,9 +1,10 @@
+import { RpcResponse, RpcVoidResponseBody } from "@core/rpc";
+
 import {
   simulateMouseClick,
   waitForSelector,
   waitUntilValue,
 } from "../lib/dom/selector";
-import { RpcResponse, RpcVoidResponseBody } from "../lib/rpc/types";
 
 // TODO: #1 REVERT symbolを返すのは型チェックのため
 export async function enableChatGptWebSearch(): Promise<

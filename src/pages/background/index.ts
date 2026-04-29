@@ -1,4 +1,5 @@
-import { registerRoutes } from "../lib/rpc/dispatcher";
+import { registerRoutes } from "@core/rpc";
+
 import { bindNotificationClickHandler } from "./notification";
 import { backgroundRoutes } from "./routes";
 

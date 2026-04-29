@@ -1,13 +1,12 @@
 import "./App.scss";
 
-import type { routes } from "@pages/content/routes";
 import {
   type Command,
   type RpcCommand,
   runRpcCommandInPopup,
-} from "@pages/core/command";
-import { createTabsRpcClient } from "@pages/lib/rpc/client";
-import type { ExtractRpcRequest } from "@pages/lib/rpc/types";
+} from "@core/command";
+import { type ExtractRpcRequest, createTabsRpcClient } from "@core/rpc";
+import type { routes } from "@pages/content/routes";
 import fuzzysort from "fuzzysort";
 import InfiniteScroll from "solid-infinite-scroll";
 import {

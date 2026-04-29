@@ -1,5 +1,6 @@
+import { RpcResponse, RpcVoidResponseBody } from "@core/rpc";
+
 import { simulateMouseClickSequence } from "../lib/dom/selector";
-import { RpcResponse, RpcVoidResponseBody } from "../lib/rpc/types";
 import { startUserKeydownOverlay } from "./common/user-keydown-overlay";
 
 const ARCHIVE_BUTTON_SELECTOR = 'div[title="アーカイブ"]';

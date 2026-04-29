@@ -1,5 +1,6 @@
-import { registerKeybindListener } from "../core/command";
-import { registerRoutes } from "../lib/rpc/dispatcher";
+import { registerKeybindListener } from "@core/command";
+import { registerRoutes } from "@core/rpc";
+
 import { listRpcCommands } from "../rpc-command";
 import { startChatGptNotifier } from "./chatgpt-notifier";
 import { initGmailLatestHashNavigation } from "./gmail-latest-hash";

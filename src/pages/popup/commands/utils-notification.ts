@@ -1,6 +1,6 @@
-import type { Command } from "@pages/core/command";
+import type { Command } from "@core/command";
+import { createRuntimeRpcClient } from "@core/rpc";
 import { backgroundRoutes } from "@src/pages/background/routes";
-import { createRuntimeRpcClient } from "@src/pages/lib/rpc/client";
 
 import { inputSignal } from "~/util/signals";
 

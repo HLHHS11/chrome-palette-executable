@@ -1,7 +1,7 @@
 // render inside top level Solid component
 import "./Entry.scss";
 
-import type { Command } from "@pages/core/command";
+import type { Command } from "@core/command";
 import { Show, createEffect, createMemo } from "solid-js";
 import twas from "twas";
 

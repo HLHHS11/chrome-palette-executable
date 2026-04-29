@@ -1,4 +1,5 @@
-import type { RpcRoute } from "../lib/rpc/types";
+import type { RpcRoute } from "@core/rpc";
+
 import {
   disableChatGptWebSearch,
   enableChatGptWebSearch,

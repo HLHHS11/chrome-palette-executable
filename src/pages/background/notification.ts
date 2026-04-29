@@ -3,7 +3,7 @@ import type {
   RpcHandlerContext,
   RpcResponse,
   RpcVoidResponseBody,
-} from "../lib/rpc/types";
+} from "@core/rpc";
 
 const tabFocusTargetByNotificationId = new Map<
   string,
