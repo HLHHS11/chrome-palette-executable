@@ -1,6 +1,8 @@
 import { routes } from "../../content/routes";
-import type { RpcHandler } from "../../lib/rpc/types";
+import { createLpcClient } from "../rpc";
 import type { CommandKeybind, RpcCommand } from "./types";
+
+const callLpc = createLpcClient(routes);
 
 export type CommandKeybindListenerOptions = {
   getCommands: () => readonly RpcCommand[];
@@ -65,27 +67,16 @@ export function registerKeybindListener(
         // TODO: #1 REFACTOR さすがに中読みにくすぎやろ。型の関係で変なことしすぎ。asも多いし
         // TODO: #1 REVERT ログを差し込みすぎ
         const run = async () => {
-          const message = command.message as
-            | ({ name: string } & Record<string, unknown>)
-            | undefined;
-          if (!message?.name) {
+          if (!command.message) {
             console.error("[chrome-palette] Invalid RPC message.");
             return;
           }
-          const route = routes.find(
-            (candidate) => candidate.name === message.name
-          );
-          if (!route) {
-            console.error(`[chrome-palette] Unknown route: ${message.name}`);
+
+          const res = await callLpc(command.message);
+          if (!res) {
+            console.error("[chrome-palette] Unknown route.");
             return;
           }
-          const { name: _, ...params } = message;
-          const handler = route.handler as RpcHandler;
-          const res = await Promise.resolve(
-            handler(params as never, {
-              sender: { id: chrome.runtime.id } as chrome.runtime.MessageSender,
-            })
-          );
           if (res && typeof res === "object" && "ok" in res && !res.ok) {
             const error =
               "error" in res && typeof res.error === "string"

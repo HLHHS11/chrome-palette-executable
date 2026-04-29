@@ -40,14 +40,19 @@ export type RpcRoute<
   handler: Handler;
 };
 
+export type RpcRequest<
+  Name extends string = string,
+  RpcRequestBody extends object = object,
+> = { name: Name } & RpcRequestBody;
+
 type ExtractRpcRequestBody<RouteT extends RpcRoute> = Parameters<
   RouteT["handler"]
 >[0];
 
 export type ExtractRpcRequest<RouteT extends RpcRoute> = RouteT extends RpcRoute
   ? ExtractRpcRequestBody<RouteT> extends undefined
-    ? { name: RouteT["name"] }
-    : { name: RouteT["name"] } & ExtractRpcRequestBody<RouteT>
+    ? RpcRequest<RouteT["name"], object>
+    : RpcRequest<RouteT["name"], ExtractRpcRequestBody<RouteT>>
   : never;
 
 export type ExtractRpcResponse<RouteT extends RpcRoute> = Awaited<
