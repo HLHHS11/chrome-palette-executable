@@ -2,6 +2,7 @@ import { RpcResponse, RpcVoidResponseBody } from "@core/rpc";
 
 import {
   simulateMouseClick,
+  simulateMouseClickSequence,
   waitForSelector,
   waitUntilValue,
 } from "../lib/dom/selector";
@@ -45,7 +46,9 @@ export function disableChatGptWebSearch(): RpcResponse<RpcVoidResponseBody> {
     'button[aria-label="検索：クリックして削除"]'
   );
   // 無効化ボタンが見つからない場合は何もしない
-  if (!btn) return { ok: false, error: "無効化ボタンが見つかりません。" };
+  if (!btn) {
+    return { ok: false, error: "無効化ボタンが見つかりません。" };
+  }
   btn.click();
 
   return { ok: true, data: {} };
@@ -85,10 +88,25 @@ type SelectChatGptModelParams =
 export async function selectChatGptModel(
   params: SelectChatGptModelParams
 ): Promise<RpcResponse<RpcVoidResponseBody>> {
-  const modelSwitchDropdownButton = await waitForSelector(
-    'button[data-testid="model-switcher-dropdown-button"]'
-  );
-  simulateMouseClick(modelSwitchDropdownButton);
+  const modelSwitchDropdownButtonResult = await waitUntilValue(() => {
+    const buttons = document
+      .querySelector("div#thread-bottom-container")
+      ?.querySelectorAll("button");
+    const selectModelButton =
+      typeof buttons !== "undefined" ? buttons[buttons.length - 3] : null;
+    if (selectModelButton) {
+      return { status: "found", value: selectModelButton };
+    }
+
+    return { status: "pending", value: null };
+  });
+  if (modelSwitchDropdownButtonResult.status !== "found") {
+    return {
+      ok: false,
+      error: "モデル選択ドロップダウンボタンが見つかりません。",
+    };
+  }
+  simulateMouseClick(modelSwitchDropdownButtonResult.value);
 
   const model = (() => {
     switch (params.model) {
@@ -98,24 +116,35 @@ export async function selectChatGptModel(
         return "model-switcher-gpt-5-5-thinking";
     }
   })();
-  const modelButton = await waitForSelector(`div[data-testid="${model}"]`);
-  simulateMouseClick(modelButton);
+  const modelButtonResult = await waitUntilValue(() => {
+    const modelButton = document.querySelector(`div[data-testid="${model}"]`);
+    if (!modelButton) {
+      return { status: "pending", value: null };
+    }
+    const modelSpan = modelButton.children[0];
+    if (!(modelSpan instanceof Element)) {
+      return { status: "pending", value: null };
+    }
+
+    return { status: "found", value: modelSpan };
+  });
+  if (modelButtonResult.status !== "found") {
+    return { ok: false, error: "モデル選択のメニュー項目が見つかりません。" };
+  }
 
   if (params.model === "gpt-5.3") {
-    // instantモデルの場合、この時点で終了して良い
+    simulateMouseClickSequence(modelButtonResult.value);
     return { ok: true, data: {} };
   } else {
     // thinkingモデルの場合、さらにthinking effortを選択
-
     const thinkingEffortExpandButtonResult = await waitUntilValue(() => {
-      // フッターに存在する２つ目 (zero-basedなら1つ目) のbuttonタグを押せば、thinking effortの選択ドロップダウンを展開できる
-      const expandButton = document
-        .querySelector('[data-testid="composer-footer-actions"]')
-        ?.querySelectorAll("button")?.[1];
-
-      return expandButton
-        ? { status: "found", value: expandButton }
-        : { status: "pending", value: null };
+      const expandButton = document.querySelector(
+        'button[aria-label="思考強度"]'
+      );
+      if (expandButton) {
+        return { status: "found", value: expandButton };
+      }
+      return { status: "pending", value: null };
     });
     if (thinkingEffortExpandButtonResult.status !== "found") {
       return {
@@ -124,7 +153,14 @@ export async function selectChatGptModel(
           "thinking effortの選択ドロップダウンを開くためのボタンが見つかりません。",
       };
     }
-    simulateMouseClick(thinkingEffortExpandButtonResult.value);
+    if (!(thinkingEffortExpandButtonResult.value instanceof HTMLElement)) {
+      return {
+        ok: false,
+        error:
+          "thinking effortの選択ドロップダウンを開くためのボタンが見つかりません。",
+      };
+    }
+    thinkingEffortExpandButtonResult.value.click();
 
     const label = (() => {
       switch (params.thinkingEffort) {
@@ -152,7 +188,13 @@ export async function selectChatGptModel(
       };
     }
 
-    simulateMouseClick(effortDivResult.value);
+    if (!(effortDivResult.value instanceof HTMLElement)) {
+      return {
+        ok: false,
+        error: `Thinking effort "${label}" の選択肢が見つかりません。`,
+      };
+    }
+    effortDivResult.value.click();
     return { ok: true, data: {} };
   }
 }
