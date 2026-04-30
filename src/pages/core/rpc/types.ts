@@ -17,9 +17,16 @@ export type RpcResponse<RpcResponseBody extends object = object> =
     };
 
 // RPCリクエストの送り主の詳細情報
-export type RpcHandlerContext = {
-  sender: chrome.runtime.MessageSender;
-};
+export type RpcHandlerContext =
+  | {
+      /** RPCリクエストの送り主の詳細情報 */
+      sender: chrome.runtime.MessageSender;
+      source: "runtime";
+    }
+  | {
+      sender?: never;
+      source: "local";
+    };
 
 // TODO: #1 Handlerのレスポンスの方に型引数がないのおかしい。
 // NOTE: Handlerのデフォルト型引数にanyを使っている理由:

@@ -52,11 +52,11 @@ export function notify(
 
   return new Promise((resolve) => {
     const callback = (notificationId: string) => {
-      const tabId = context.sender.tab?.id;
+      const tabId = context.sender?.tab?.id;
       if (typeof tabId === "number") {
         tabFocusTargetByNotificationId.set(notificationId, {
           tabId,
-          windowId: context.sender.tab?.windowId,
+          windowId: context.sender?.tab?.windowId,
         });
       }
 
