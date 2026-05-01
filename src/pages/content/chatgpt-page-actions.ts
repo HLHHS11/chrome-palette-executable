@@ -84,7 +84,6 @@ type SelectChatGptModelParams =
       thinkingEffort: "standard" | "extended";
     };
 
-// TODO: #1 既に選択されている場合にこまるわ。
 export async function selectChatGptModel(
   params: SelectChatGptModelParams
 ): Promise<RpcResponse<RpcVoidResponseBody>> {
@@ -93,7 +92,12 @@ export async function selectChatGptModel(
       .querySelector("div#thread-bottom-container")
       ?.querySelectorAll("button");
     const selectModelButton =
-      typeof buttons !== "undefined" ? buttons[buttons.length - 3] : null;
+      typeof buttons !== "undefined"
+        ? ([...buttons].find((button) => {
+            const text = button.textContent?.trim();
+            return text === "Instant" || text === "思考" || text === "拡張";
+          }) ?? null)
+        : null;
     if (selectModelButton) {
       return { status: "found", value: selectModelButton };
     }
