@@ -77,7 +77,7 @@ export function toggleChatGptSidebar(): RpcResponse<RpcVoidResponseBody> {
 
 type SelectChatGptModelParams =
   | {
-      model: "gpt-5.3";
+      model: "gpt-5.5";
     }
   | {
       model: "gpt-5.5-thinking";
@@ -114,8 +114,8 @@ export async function selectChatGptModel(
 
   const model = (() => {
     switch (params.model) {
-      case "gpt-5.3":
-        return "model-switcher-gpt-5-3";
+      case "gpt-5.5":
+        return "model-switcher-gpt-5-5";
       case "gpt-5.5-thinking":
         return "model-switcher-gpt-5-5-thinking";
     }
@@ -136,7 +136,7 @@ export async function selectChatGptModel(
     return { ok: false, error: "モデル選択のメニュー項目が見つかりません。" };
   }
 
-  if (params.model === "gpt-5.3") {
+  if (params.model === "gpt-5.5") {
     simulateMouseClickSequence(modelButtonResult.value);
     return { ok: true, data: {} };
   } else {

@@ -27,11 +27,11 @@ export default function getChatgptCommands(
       message: { name: "chatgpt.disableWebSearch" },
     },
     {
-      title: "ChatGPT: Instant (GPT-5.3) モデルを選択",
+      title: "ChatGPT: Instant (GPT-5.5) モデルを選択",
       subtitle: "ChatGPT: Select Instant Model",
       message: {
         name: "chatgpt.selectModel",
-        model: "gpt-5.3",
+        model: "gpt-5.5",
       },
     },
     {
