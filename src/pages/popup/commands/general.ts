@@ -1,7 +1,7 @@
 // adapted from https://github.com/ssundarraj/commander/blob/master/src/js/actions.js
 import type { Command } from "@pages/core/command";
 
-import { resetHistory } from "~/util/last-used";
+import { whenRankingServiceReady } from "~/util/ranking";
 import { inputSignal, parsedInput } from "~/util/signals";
 
 import { isTruthy } from "../util/isTruthy";
@@ -453,11 +453,10 @@ const base: Command[] = [
     title: "Reset command history",
     subtitle: "Resets the order of commands in this extension",
     handler: async function () {
-      setTimeout(() => {
-        // otherwise this command will be stored
-        resetHistory();
-        window.location.reload();
-      }, 0);
+      // runCommand 側で先に record されるが、その直後に reset するので結果は空。
+      const service = await whenRankingServiceReady();
+      await service.reset();
+      window.location.reload();
     },
   },
 ];

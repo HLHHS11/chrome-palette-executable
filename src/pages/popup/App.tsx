@@ -21,7 +21,7 @@ import { tinykeys } from "tinykeys";
 import { listAllCommands } from "../command";
 import Entry from "./Entry";
 import Shortcut from "./Shortcut";
-import { sortByUsed, storeLastUsed } from "./util/last-used";
+import { rankingService } from "./util/ranking";
 import { createStoredSignal, inputSignal, parsedInput } from "./util/signals";
 
 const [shortcut, setShortcut] = createStoredSignal("_execute_action", "?");
@@ -52,9 +52,7 @@ const [activeTabPageUrl] = createResource(
 
 const allCommands = createMemo(() => {
   const pageUrl = activeTabPageUrl();
-  const commands = listAllCommands(pageUrl);
-  sortByUsed(commands);
-  return commands;
+  return listAllCommands(pageUrl);
 });
 
 const commandsLimit = 75;
@@ -62,13 +60,19 @@ const commandsLimit = 75;
 const [scrollIndex, setScrollIndex] = createSignal(commandsLimit);
 
 const matches = createMemo(() => {
-  return fuzzysort.go(parsedInput().query, allCommands(), {
+  const rawMatches = fuzzysort.go(parsedInput().query, allCommands(), {
     threshold: -10000, // don't return bad results
     limit: scrollIndex(), // Don't return more results than this (lower is faster)
     all: true, // If true, returns all results for an empty search
     keys: ["title", "subtitle", "url"], // For when targets are objects (see its example usage)
     // keys: null, // For when targets are objects (see its example usage)
     // scoreFn: null, // For use with `keys` (see its example usage)
+  });
+  const service = rankingService();
+  if (!service) return [...rawMatches];
+  return service.applyBoost(rawMatches, parsedInput().query, {
+    getCommandId: (m) => m.obj.title,
+    getRawScore: (m) => m.score,
   });
 });
 
@@ -95,7 +99,14 @@ createEffect(() => {
 
 // TODO: #1 REFACTOR そもそもApp.tsxにおいておくべきじゃない
 export const runCommand = async (command: Command) => {
-  storeLastUsed(command);
+  try {
+    const service = rankingService();
+    if (service) {
+      await service.record(command.title, parsedInput().query);
+    }
+  } catch (e) {
+    console.error("Failed to record ranking. Details:", e);
+  }
   if ("message" in command) {
     await runRpcCommandInPopup(command as RpcCommand<ContentRpcMessage>, {
       callTabsRpc,

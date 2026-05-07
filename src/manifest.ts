@@ -56,6 +56,7 @@ const manifest = defineManifest(async () => ({
     "history",
     "favicon",
     "notifications",
+    "storage",
   ],
   web_accessible_resources: [
     {
