@@ -1,8 +1,12 @@
-import type { Command } from "@core/command";
+import type { Command, RpcCommand } from "@core/command";
+import type { ExtractRpcRequest } from "@core/rpc";
+import type { routes } from "@src/pages/content/routes";
 
 import { inputSignal } from "~/util/signals";
 
 const [, setInputValue] = inputSignal;
+
+type ContentRpcMessage = ExtractRpcRequest<(typeof routes)[number]>;
 
 async function runToggleGeminiSideBar(): Promise<void> {
   try {
@@ -38,6 +42,29 @@ export default function getGeminiCommands(pageUrl: URL | undefined): Command[] {
       title: "Gemini: サイドバーをトグル",
       subtitle: `Gemini: Toggle Side Bar`,
       handler: runToggleGeminiSideBar,
+    },
+  ];
+}
+
+export function getGeminiRpcCommands(
+  pageUrl: URL | undefined
+): RpcCommand<ContentRpcMessage>[] {
+  const isGeminiPage = pageUrl?.hostname === "gemini.google.com";
+  if (!isGeminiPage) return [];
+
+  return [
+    {
+      title: "Gemini: 回答生成を停止",
+      subtitle: "Gemini: Stop Generation",
+      message: { name: "gemini.stopGeneration" },
+      keybind: [
+        {
+          metaKey: true,
+          shiftKey: true,
+          key: "Backspace",
+          preventDefault: true,
+        },
+      ],
     },
   ];
 }

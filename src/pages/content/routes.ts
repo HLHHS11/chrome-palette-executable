@@ -8,6 +8,7 @@ import {
   stopChatGptGeneration,
   toggleChatGptSidebar,
 } from "./chatgpt-page-actions";
+import { stopGeminiGeneration } from "./gemini-page-actions";
 import { startGmailArchiveMode } from "./gmail-page-actions";
 
 export const routes = [
@@ -17,5 +18,6 @@ export const routes = [
   { name: "chatgpt.selectModel", handler: selectChatGptModel },
   { name: "chatgpt.openFileAttach", handler: openChatGptFileAttach },
   { name: "chatgpt.stopGeneration", handler: stopChatGptGeneration },
+  { name: "gemini.stopGeneration", handler: stopGeminiGeneration },
   { name: "gmail.archive", handler: startGmailArchiveMode },
 ] as const satisfies readonly RpcRoute[];
