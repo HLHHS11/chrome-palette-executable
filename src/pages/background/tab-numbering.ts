@@ -98,14 +98,15 @@ class TabNumberingController {
     await Promise.all(restoreTitlePromises);
   }
 
-  async show(): Promise<RpcResponse<RpcVoidResponseBody>> {
+  async show(
+    params: { timeoutMs?: number } = {}
+  ): Promise<RpcResponse<RpcVoidResponseBody>> {
     await this.applyNumbersToActiveWindow();
 
-    // safety timeout: keyup を取り逃しても確実に hide される保険。
     this.clearSafetyTimer();
     this.safetyTimerId = setTimeout(() => {
       void this.restoreNumbersInActiveWindow();
-    }, NUMBERING_SAFETY_TIMEOUT_MS);
+    }, params.timeoutMs ?? NUMBERING_SAFETY_TIMEOUT_MS);
 
     return { ok: true, data: {} };
   }
@@ -129,8 +130,10 @@ class TabNumberingController {
 // シングルトンを生成し、クロージャ関数としてエクスポートする。
 const controller = new TabNumberingController();
 
-export function showTabNumbers(): Promise<RpcResponse<RpcVoidResponseBody>> {
-  return controller.show();
+export function showTabNumbers(
+  params: { timeoutMs?: number } = {}
+): Promise<RpcResponse<RpcVoidResponseBody>> {
+  return controller.show(params);
 }
 export function hideTabNumbers(): Promise<RpcResponse<RpcVoidResponseBody>> {
   return controller.hide();

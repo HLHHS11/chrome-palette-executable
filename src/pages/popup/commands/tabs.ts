@@ -1,9 +1,13 @@
 import type { Command } from "@core/command";
+import { createRuntimeRpcClient } from "@core/rpc";
+import { backgroundRoutes } from "@src/pages/background/routes";
 
 import niceUrl from "~/util/nice-url";
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
+
+const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
 const KEYWORD = "t";
 
@@ -32,6 +36,17 @@ const base: Command[] = [
     },
     keyword: KEYWORD + ">",
     icon: faviconURL("about:blank"),
+  },
+  {
+    title: "タブに番号を表示",
+    subtitle: "Show Tab Numbers",
+    handler: async () => {
+      await callRuntimeRpc({
+        name: "tabNumbering.show",
+        timeoutMs: 5000,
+      });
+      window.close();
+    },
   },
 ];
 
