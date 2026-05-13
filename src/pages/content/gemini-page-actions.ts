@@ -37,18 +37,10 @@ export async function selectGeminiModel(
     }
   })();
 
-  const modelOption = await (async () => {
-    try {
-      return await waitForSelector(`[data-test-id="${optionTestId}"]`, {
-        timeoutMs: 3000,
-      });
-    } catch {
-      return null;
-    }
-  })();
-  if (!modelOption) {
-    return { ok: false, error: "モデル選択のメニュー項目が見つかりません。" };
-  }
+  const modelOption = await waitForSelector(
+    `[data-test-id="${optionTestId}"]`,
+    { timeoutMs: 3000 }
+  );
   simulateMouseClick(modelOption);
   return { ok: true, data: {} };
 }
@@ -87,16 +79,10 @@ export async function openGeminiFileUpload(): Promise<
 
   // メニュー展開後にレンダリングされるので waitForSelector で出現を待つ。
   // NOTE: UI上の文言が変更されたら、ここも修正が必要になる！
-  const uploadItem = await (async () => {
-    try {
-      return await waitForSelector(
-        '[aria-label="ファイルをアップロード. ドキュメント、データ、コードファイル"]',
-        { timeoutMs: 3000 }
-      );
-    } catch {
-      return null;
-    }
-  })();
+  const uploadItem = await waitForSelector(
+    '[aria-label="ファイルをアップロード. ドキュメント、データ、コードファイル"]',
+    { timeoutMs: 3000 }
+  );
   if (!(uploadItem instanceof HTMLElement)) {
     return {
       ok: false,
