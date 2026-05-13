@@ -14,6 +14,7 @@ import {
   stopGeminiGeneration,
 } from "./gemini-page-actions";
 import { startGmailArchiveMode } from "./gmail-page-actions";
+import { exportGoogleDocsAsMarkdown } from "./google-docs-page-actions";
 import { getSelectionTextDirective } from "./link-copy-page-actions";
 
 export const routes = [
@@ -27,6 +28,7 @@ export const routes = [
   { name: "gemini.openFileUpload", handler: openGeminiFileUpload },
   { name: "gemini.selectModel", handler: selectGeminiModel },
   { name: "gmail.archive", handler: startGmailArchiveMode },
+  { name: "googleDocs.exportAsMarkdown", handler: exportGoogleDocsAsMarkdown },
   {
     name: "linkCopy.getSelectionTextDirective",
     handler: getSelectionTextDirective,
