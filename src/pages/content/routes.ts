@@ -19,7 +19,7 @@ import { getSelectionTextDirective } from "./link-copy-page-actions";
 import {
   applyTabNumberingTitle,
   restoreTabNumberingTitle,
-} from "./tab-numbering-page-actions";
+} from "./tab-numbering";
 
 export const routes = [
   { name: "chatgpt.enableWebSearch", handler: enableChatGptWebSearch },
