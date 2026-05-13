@@ -66,5 +66,10 @@ export function getGeminiRpcCommands(
         },
       ],
     },
+    {
+      title: "Gemini: ファイルをアップロード",
+      subtitle: "Gemini: Upload File",
+      message: { name: "gemini.openFileUpload" },
+    },
   ];
 }
