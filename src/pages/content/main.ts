@@ -3,6 +3,7 @@ import { registerRoutes } from "@core/rpc";
 
 import { listRpcCommands } from "../rpc-command";
 import { startChatGptNotifier } from "./chatgpt-notifier";
+import { startGeminiNotifier } from "./gemini-notifier";
 import { initGmailLatestHashNavigation } from "./gmail-latest-hash";
 import { routes } from "./routes";
 import { initTabNumberingHints } from "./tab-numbering";
@@ -19,5 +20,6 @@ registerKeybindListener({
 });
 
 startChatGptNotifier();
+startGeminiNotifier();
 initGmailLatestHashNavigation();
 initTabNumberingHints();
