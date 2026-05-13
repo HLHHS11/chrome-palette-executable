@@ -5,8 +5,9 @@ import { listRpcCommands } from "../rpc-command";
 import { startChatGptNotifier } from "./chatgpt-notifier";
 import { initGmailLatestHashNavigation } from "./gmail-latest-hash";
 import { routes } from "./routes";
+import { initTabNumberingHints } from "./tab-numbering-hints";
 
-console.log("[chrome-palette] content initialized: v0.0.9");
+console.log("[chrome-palette] content initialized: v0.0.15");
 registerRoutes(routes);
 
 registerKeybindListener({
@@ -19,3 +20,4 @@ registerKeybindListener({
 
 startChatGptNotifier();
 initGmailLatestHashNavigation();
+initTabNumberingHints();

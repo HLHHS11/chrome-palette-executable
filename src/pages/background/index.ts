@@ -2,9 +2,11 @@ import { registerRoutes } from "@core/rpc";
 
 import { bindNotificationClickHandler } from "./notification";
 import { backgroundRoutes } from "./routes";
+import { bindTabNumberingAutoHide } from "./tab-numbering";
 
 registerRoutes(backgroundRoutes);
 bindNotificationClickHandler();
+bindTabNumberingAutoHide();
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   console.log({ alarm }, new Date());

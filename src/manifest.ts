@@ -51,6 +51,7 @@ const manifest = defineManifest(async () => ({
   permissions: [
     "alarms",
     "tabs",
+    "tabGroups",
     "activeTab",
     "scripting",
     "sessions",

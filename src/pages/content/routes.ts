@@ -16,6 +16,10 @@ import {
 import { startGmailArchiveMode } from "./gmail-page-actions";
 import { exportGoogleDocsAsMarkdown } from "./google-docs-page-actions";
 import { getSelectionTextDirective } from "./link-copy-page-actions";
+import {
+  applyTabNumberingTitle,
+  restoreTabNumberingTitle,
+} from "./tab-numbering-page-actions";
 
 export const routes = [
   { name: "chatgpt.enableWebSearch", handler: enableChatGptWebSearch },
@@ -32,5 +36,13 @@ export const routes = [
   {
     name: "linkCopy.getSelectionTextDirective",
     handler: getSelectionTextDirective,
+  },
+  {
+    name: "tabNumbering.applyTitleInFrame",
+    handler: applyTabNumberingTitle,
+  },
+  {
+    name: "tabNumbering.restoreTitleInFrame",
+    handler: restoreTabNumberingTitle,
   },
 ] as const satisfies readonly RpcRoute[];
