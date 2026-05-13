@@ -7,6 +7,52 @@ import {
 } from "../lib/dom/selector";
 import { startUserKeydownOverlay } from "./common/user-keydown-overlay";
 
+type SelectGeminiModelParams = {
+  model: "instant" | "thinking" | "pro";
+};
+
+export async function selectGeminiModel(
+  params: SelectGeminiModelParams
+): Promise<RpcResponse<RpcVoidResponseBody>> {
+  const menuButton = document.querySelector<HTMLElement>(
+    'button[data-test-id="bard-mode-menu-button"]'
+  );
+  if (!menuButton) {
+    return {
+      ok: false,
+      error: "モデル選択ドロップダウンボタンが見つかりません。",
+    };
+  }
+  simulateMouseClick(menuButton);
+
+  // NOTE: UI上の文言 (test id末尾の日本語含む) が変更されたら、ここも修正が必要になる！
+  const optionTestId = (() => {
+    switch (params.model) {
+      case "instant":
+        return "bard-mode-option-高速モード";
+      case "thinking":
+        return "bard-mode-option-思考モード";
+      case "pro":
+        return "bard-mode-option-pro";
+    }
+  })();
+
+  const modelOption = await (async () => {
+    try {
+      return await waitForSelector(`[data-test-id="${optionTestId}"]`, {
+        timeoutMs: 3000,
+      });
+    } catch {
+      return null;
+    }
+  })();
+  if (!modelOption) {
+    return { ok: false, error: "モデル選択のメニュー項目が見つかりません。" };
+  }
+  simulateMouseClick(modelOption);
+  return { ok: true, data: {} };
+}
+
 export function stopGeminiGeneration(): RpcResponse<RpcVoidResponseBody> {
   // NOTE: UI上の文言が変更されたら、ここも修正が必要になる！
   const stopButton = document.querySelector<HTMLElement>(

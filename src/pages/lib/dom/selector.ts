@@ -14,6 +14,7 @@ export async function waitForSelector(
         return;
       }
       if (Date.now() >= deadline) {
+        // NOTE: わざわざreject (実質throw) せず、undefinedを返す設計にしても良いかもしれない。
         reject(new Error(`waitForSelector timeout: ${selector}`));
         return;
       }

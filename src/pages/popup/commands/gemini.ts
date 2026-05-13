@@ -71,5 +71,20 @@ export function getGeminiRpcCommands(
       subtitle: "Gemini: Upload File",
       message: { name: "gemini.openFileUpload" },
     },
+    {
+      title: "Gemini: Instant モデルを選択",
+      subtitle: "Gemini: Select Instant Model",
+      message: { name: "gemini.selectModel", model: "instant" },
+    },
+    {
+      title: "Gemini: Thinking モデルを選択",
+      subtitle: "Gemini: Select Thinking Model",
+      message: { name: "gemini.selectModel", model: "thinking" },
+    },
+    {
+      title: "Gemini: Pro モデルを選択",
+      subtitle: "Gemini: Select Pro Model",
+      message: { name: "gemini.selectModel", model: "pro" },
+    },
   ];
 }
