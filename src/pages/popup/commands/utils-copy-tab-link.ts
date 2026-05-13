@@ -1,8 +1,11 @@
+import { createTabsRpcClient } from "@core/rpc";
+import type { routes } from "@pages/content/routes";
 import type { Command } from "@pages/core/command";
 
 import { inputSignal } from "~/util/signals";
 
 const [, setInputValue] = inputSignal;
+const callContentRpc = createTabsRpcClient<typeof routes>();
 
 async function pickActiveTab(): Promise<chrome.tabs.Tab | undefined> {
   const [tab] = await chrome.tabs.query({
@@ -10,6 +13,25 @@ async function pickActiveTab(): Promise<chrome.tabs.Tab | undefined> {
     lastFocusedWindow: true,
   });
   return tab;
+}
+
+/**
+ * ページ URL に Text Fragment の directive (`text=...`) を付与する。
+ * `textDirective` が null のときは `rawPageUrl` をそのまま返す。
+ *
+ * 既に hash 内に `:~:` がある場合は、同セグメントの text directive を置き換える形で上書きする。
+ */
+function applyTextFragmentDirectiveToPageUrl(
+  rawPageUrl: string,
+  textDirective: string | null
+): string {
+  if (!textDirective) return rawPageUrl;
+
+  const [base, hash = ""] = rawPageUrl.split("#");
+  const baseHash = hash.split(":~:")[0];
+  return baseHash
+    ? `${base}#${baseHash}:~:${textDirective}`
+    : `${base}#:~:${textDirective}`;
 }
 
 function buildMarkdownLinkSnippet(
@@ -42,11 +64,22 @@ function buildRichTextHtmlFragment(
 async function runCopyMarkdownTabLink(): Promise<void> {
   try {
     const activeTab = await pickActiveTab();
-    const pageUrl = activeTab?.url;
+    const rawPageUrl = activeTab?.url;
     const documentTitle = activeTab?.title ?? "";
 
-    if (!pageUrl) throw new Error("現在のタブの URL が取得できません。");
+    if (!rawPageUrl) throw new Error("現在のタブの URL が取得できません。");
 
+    const maybeTextDirective = await callContentRpc({
+      name: "linkCopy.getSelectionTextDirective",
+    }).then((res) => {
+      if (!res.ok) return null;
+      if (!("data" in res)) return null;
+      return res.data.textDirective;
+    });
+    const pageUrl = applyTextFragmentDirectiveToPageUrl(
+      rawPageUrl,
+      maybeTextDirective
+    );
     const markdownSnippet = buildMarkdownLinkSnippet(documentTitle, pageUrl);
     await navigator.clipboard.writeText(markdownSnippet);
     window.close();
@@ -59,11 +92,22 @@ async function runCopyMarkdownTabLink(): Promise<void> {
 async function runCopyRichTextTabLink(): Promise<void> {
   try {
     const activeTab = await pickActiveTab();
-    const pageUrl = activeTab?.url;
+    const rawPageUrl = activeTab?.url;
     const documentTitle = activeTab?.title ?? "";
 
-    if (!pageUrl) throw new Error("現在のタブの URL が取得できません。");
+    if (!rawPageUrl) throw new Error("現在のタブの URL が取得できません。");
 
+    const maybeTextDirective = await callContentRpc({
+      name: "linkCopy.getSelectionTextDirective",
+    }).then((res) => {
+      if (!res.ok) return null;
+      if (!("data" in res)) return null;
+      return res.data.textDirective;
+    });
+    const pageUrl = applyTextFragmentDirectiveToPageUrl(
+      rawPageUrl,
+      maybeTextDirective
+    );
     const htmlFragment = buildRichTextHtmlFragment(documentTitle, pageUrl);
     const plainTextFallback = `${documentTitle} ${pageUrl}`;
     const htmlBlob = new Blob([htmlFragment], { type: "text/html" });

@@ -37,14 +37,13 @@ const manifest = defineManifest(async () => ({
       },
     },
   },
-  // TODO: #1 これ、正直matchesはあらゆるwebページにしちゃっても困らない気はするんだよな
+  // 「リンクをコピー」コマンドが任意のWebページの選択範囲を RPC 経由で取得するため、
+  // matches は <all_urls> を指定している。特定サイト向けのアクション
+  // (例: chatgpt/gemini/gmail) は、各 page-actions 側で host チェックして弾く形ではなく、
+  // popup 側のコマンド一覧生成時に pageUrl で絞り込む方式になっている。
   content_scripts: [
     {
-      matches: [
-        "https://chatgpt.com/*",
-        "https://mail.google.com/*",
-        "https://gemini.google.com/*",
-      ],
+      matches: ["<all_urls>"],
       js: ["src/pages/content/main.ts"],
       run_at: "document_idle",
     },
