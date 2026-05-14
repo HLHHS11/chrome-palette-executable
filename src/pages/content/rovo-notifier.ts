@@ -7,22 +7,25 @@ const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 // 入力フォームの親要素。 DOM 変化の監視対象として使う。
 const ANCHOR_SELECTOR = '[data-testid="chat-input-wrapper"]';
 
-// 生成中は送信ボタンが「生成を停止」ボタンに差し替わる。
-// Rovo の送信/停止ボタンには aria-label が無く、内部の VisuallyHidden span に
-// 「送信」「生成を停止」というテキストが入る形で状態が表現されている。
-// そのため textContent ベースで判定する。日本語 UI 前提。
-const STOP_BUTTON_LABEL = "生成を停止";
+// 回答生成中の停止ボタンには aria-label / data-testid が無く、
+// 子孫の VisuallyHidden span の「生成を停止」テキストでしか同定できない。
+// CSS セレクタでは祖先指定が書きにくいため XPath で取得する。日本語 UI 前提。
+const STOP_BUTTON_XPATH =
+  '//*[@data-testid="chat-input-wrapper"]//*[normalize-space(text())="生成を停止"]/ancestor::button[1]';
 
 const NOTIFY_COOLDOWN_MS = 1500;
 const HEALTHCHECK_INTERVAL_MS = 2000;
 
 function isGenerating(): boolean {
-  const wrapper = document.querySelector(ANCHOR_SELECTOR);
-  if (!wrapper) return false;
-  for (const button of wrapper.querySelectorAll("button")) {
-    if (button.textContent?.includes(STOP_BUTTON_LABEL)) return true;
-  }
-  return false;
+  return (
+    document.evaluate(
+      STOP_BUTTON_XPATH,
+      document,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null
+    ).singleNodeValue !== null
+  );
 }
 
 function notifyFinished(): void {

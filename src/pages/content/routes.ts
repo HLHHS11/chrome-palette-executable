@@ -16,6 +16,7 @@ import {
 import { startGmailArchiveMode } from "./gmail-page-actions";
 import { exportGoogleDocsAsMarkdown } from "./google-docs-page-actions";
 import { getSelectionTextDirective } from "./link-copy-page-actions";
+import { stopRovoGeneration } from "./rovo-page-actions";
 import {
   applyTabNumberingTitle,
   restoreTabNumberingTitle,
@@ -31,6 +32,7 @@ export const routes = [
   { name: "gemini.stopGeneration", handler: stopGeminiGeneration },
   { name: "gemini.openFileUpload", handler: openGeminiFileUpload },
   { name: "gemini.selectModel", handler: selectGeminiModel },
+  { name: "rovo.stopGeneration", handler: stopRovoGeneration },
   { name: "gmail.archive", handler: startGmailArchiveMode },
   { name: "googleDocs.exportAsMarkdown", handler: exportGoogleDocsAsMarkdown },
   {
