@@ -1,5 +1,6 @@
 import type { RpcCommand } from "./core/command";
 import chatgptSuggestions from "./popup/commands/chatgpt";
+import { getClaudeRpcCommands } from "./popup/commands/claude";
 import { getGeminiRpcCommands } from "./popup/commands/gemini";
 import { getGoogleDocsRpcCommands } from "./popup/commands/google-docs";
 import { getRovoRpcCommands } from "./popup/commands/rovo";
@@ -12,5 +13,6 @@ export function listRpcCommands(pageUrl: URL | undefined): RpcCommand[] {
     ...getGeminiRpcCommands(pageUrl),
     ...getGoogleDocsRpcCommands(pageUrl),
     ...getRovoRpcCommands(pageUrl),
+    ...getClaudeRpcCommands(pageUrl),
   ];
 }
