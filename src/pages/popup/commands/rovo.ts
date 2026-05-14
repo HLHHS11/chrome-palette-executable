@@ -24,5 +24,25 @@ export function getRovoRpcCommands(
         },
       ],
     },
+    {
+      title: "Rovo: Auto モデルを選択",
+      subtitle: "Rovo: Select Auto Model",
+      message: { name: "rovo.selectModel", model: "auto" },
+    },
+    {
+      title: "Rovo: Instant モデルを選択",
+      subtitle: "Rovo: Select Instant Model",
+      message: { name: "rovo.selectModel", model: "instant" },
+    },
+    {
+      title: "Rovo: Thinking モデルを選択",
+      subtitle: "Rovo: Select Thinking Model",
+      message: { name: "rovo.selectModel", model: "thinking" },
+    },
+    {
+      title: "Rovo: Deep Research モデルを選択",
+      subtitle: "Rovo: Select Deep Research Model",
+      message: { name: "rovo.selectModel", model: "deep-research" },
+    },
   ];
 }
