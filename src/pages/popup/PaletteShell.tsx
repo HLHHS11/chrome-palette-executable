@@ -4,10 +4,8 @@ import type { Command } from "@core/command";
 import InfiniteScroll from "solid-infinite-scroll";
 import {
   type Accessor,
-  Show,
   createEffect,
   createMemo,
-  createResource,
   createSignal,
 } from "solid-js";
 import { tinykeys } from "tinykeys";
@@ -17,24 +15,6 @@ import Shortcut from "./Shortcut";
 import { inputSignal } from "./util/signals";
 
 const [inputValue, setInputValue] = inputSignal;
-
-/**
- * popup を初めて開いたユーザがツールバーにピン留めしていない場合に出す警告。
- * popup の UX に閉じた話なので Shell に同居させる。
- */
-function PinWarning() {
-  const [userSettings] = createResource(() => chrome.action.getUserSettings());
-  const isNotPinned = createMemo(
-    () => userSettings() && userSettings()?.isOnToolbar === false
-  );
-  return (
-    <Show when={isNotPinned()}>
-      <div style={{ color: "red", padding: "10px" }}>
-        Pin the extension to the toolbar for faster load
-      </div>
-    </Show>
-  );
-}
 
 /**
  * リストのキーボードナビゲーションと展開状態を司る private なフック。
@@ -144,49 +124,46 @@ export default function PaletteShell(props: {
   );
 
   return (
-    <>
-      <div
-        class="App"
-        onBlur={() => {
-          window.close();
-        }}
-      >
-        <div class="input_wrap">
-          <input
-            class="input"
-            autofocus
-            placeholder="Type to search..."
-            value={inputValue()}
-            onInput={(e) => {
-              setInputValue(e.target.value);
-            }}
-          />
-          <Shortcut
-            onClick={() =>
-              chrome.tabs.create({ url: "chrome://extensions/shortcuts" })
-            }
-            keys={props.shortcut()}
-          />
-        </div>
-        <ul class="list">
-          <InfiniteScroll
-            loadingMessage={<></>}
-            each={props.commands()}
-            hasMore={true}
-            next={props.onLoadMore}
-          >
-            {(command, i) => (
-              <Entry
-                isSelected={i() === nav.selectedI()}
-                isExpanded={nav.isExpanded(i())}
-                command={command}
-                onSelect={props.onSelect}
-              />
-            )}
-          </InfiniteScroll>
-        </ul>
+    <div
+      class="App"
+      onBlur={() => {
+        window.close();
+      }}
+    >
+      <div class="input_wrap">
+        <input
+          class="input"
+          autofocus
+          placeholder="Type to search..."
+          value={inputValue()}
+          onInput={(e) => {
+            setInputValue(e.target.value);
+          }}
+        />
+        <Shortcut
+          onClick={() =>
+            chrome.tabs.create({ url: "chrome://extensions/shortcuts" })
+          }
+          keys={props.shortcut()}
+        />
       </div>
-      <PinWarning />
-    </>
+      <ul class="list">
+        <InfiniteScroll
+          loadingMessage={<></>}
+          each={props.commands()}
+          hasMore={true}
+          next={props.onLoadMore}
+        >
+          {(command, i) => (
+            <Entry
+              isSelected={i() === nav.selectedI()}
+              isExpanded={nav.isExpanded(i())}
+              command={command}
+              onSelect={props.onSelect}
+            />
+          )}
+        </InfiniteScroll>
+      </ul>
+    </div>
   );
 }
