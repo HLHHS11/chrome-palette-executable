@@ -63,15 +63,18 @@ function startCacheRestoreOnce(): void {
 function makeTabCommand(
   snap: Pick<
     TabSnapshot,
-    "tabId" | "windowId" | "title" | "url" | "host" | "path" | "favicon"
+    "tabId" | "windowId" | "title" | "host" | "path" | "favicon"
   >,
   highlights: HighlightSpec | undefined
 ): Command {
+  // `url` フィールドは敢えてセットしない:
+  // - Command.url がセットされていると runCommand が `chrome.tabs.create({url})` を
+  //   呼び新規タブを開いてしまう (tab-search の意図は既存タブにフォーカスするだけ)
+  // - 表示上も subtitle (= host+path) と URL 行で同じ URL が二重に出てしまう
   return {
     title: snap.title,
     subtitle: snap.host + snap.path,
     icon: snap.favicon,
-    url: snap.url,
     highlights,
     handler: () => {
       chrome.tabs.update(snap.tabId, { active: true });

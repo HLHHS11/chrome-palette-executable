@@ -73,23 +73,31 @@ function useListNavigation(
     document.activeElement?.tagName === "INPUT" ||
     document.activeElement?.tagName === "TEXTAREA";
 
+  // IME 変換中の確定キー (Enter) や候補選択キー (↑/↓ や Space) を
+  // リストナビゲーションとして拾わないためのガード。
+  // `e.isComposing` は IME 入力中の keydown で true になる。
+  const isImeComposing = (e: KeyboardEvent) => e.isComposing;
+
   tinykeys(window, {
     ArrowUp: (e) => {
+      if (isImeComposing(e)) return;
       e.preventDefault();
       setSelectedI((i) => i - 1);
     },
     ArrowDown: (e) => {
+      if (isImeComposing(e)) return;
       e.preventDefault();
       setSelectedI((i) => i + 1);
     },
     Enter: (e) => {
+      if (isImeComposing(e)) return;
       e.preventDefault();
       const item = getItems()[selectedI()];
       if (item !== undefined) onEnter(item);
     },
     Space: (e) => {
-      // 入力欄フォーカス中の Space は通常入力として透過させる。
-      if (isInputFocused()) return;
+      // 入力欄フォーカス中の Space は通常入力 / IME 変換に透過させる。
+      if (isInputFocused() || isImeComposing(e)) return;
       e.preventDefault();
       const idx = selectedI();
       const next = new Set<number>(expandedSet());
