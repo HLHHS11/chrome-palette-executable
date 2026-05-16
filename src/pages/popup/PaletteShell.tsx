@@ -126,7 +126,14 @@ export default function PaletteShell(props: {
   /** リスト末端到達時にもっと読み込む通知。 */
   onLoadMore: () => void;
 }) {
-  const nav = useListNavigation(props.commands, props.onSelect);
+  // TODO: #2 ↓以下、山口は全く理解してない
+  // props.* を直接渡すと Solid lint が "tracked scope の外で reactive を参照" と警告する。
+  // hook 側の createMemo / tinykeys ハンドラから呼ばれる時点 (= tracked / event 内) で
+  // props を読み直すよう、薄いラッパーで包む。
+  const nav = useListNavigation(
+    () => props.commands(),
+    (item) => props.onSelect(item)
+  );
 
   return (
     <>

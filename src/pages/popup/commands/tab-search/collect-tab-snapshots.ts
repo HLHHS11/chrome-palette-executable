@@ -16,11 +16,7 @@ const callContentRpc = createTabsRpcClient<typeof contentRoutes>();
  * - 結果順は `chrome.tabs.query({})` の返却順 (= タブの index 順) に従う。
  */
 export async function collectTabSnapshots(): Promise<TabSnapshot[]> {
-  const startedAt = performance.now();
   const tabs = await chrome.tabs.query({});
-  console.log("[tabsearch][popup] collectTabSnapshots: querying tabs", {
-    tabCount: tabs.length,
-  });
 
   const snapshots = await Promise.all(
     tabs.map(async (tab): Promise<TabSnapshot | null> => {
@@ -36,46 +32,16 @@ export async function collectTabSnapshots(): Promise<TabSnapshot[]> {
         }
       })();
 
-      let rpcError: unknown = null;
       const rpcResult = await callContentRpc(
         { name: "tabSearch.getPageText" },
         { tabId: tab.id }
-      ).catch((e) => {
-        rpcError = e;
-        return null;
-      });
+      ).catch(() => null);
 
       const text =
         rpcResult && rpcResult.ok && "data" in rpcResult
           ? rpcResult.data.text
           : "";
       const reachable = rpcResult !== null;
-
-      console.log("[tabsearch][popup] tab snapshot", {
-        tabId: tab.id,
-        title,
-        url,
-        status: tab.status,
-        discarded: tab.discarded,
-        reachable,
-        textLength: text.length,
-        rpcError: rpcError ? String(rpcError) : null,
-      });
-      // 本文が取れたタブはフル本文も別行で吐く。
-      // DevTools 上で text 全体をコピーして、ユーザが期待するワードが
-      // 本当に含まれているかを目視 grep できるようにするため。
-      if (text.length > 0) {
-        console.log(
-          "[tabsearch][popup] FULL TEXT BEGIN tabId=" +
-            tab.id +
-            " url=" +
-            url +
-            "\n" +
-            text +
-            "\n[tabsearch][popup] FULL TEXT END tabId=" +
-            tab.id
-        );
-      }
 
       return {
         tabId: tab.id,
@@ -91,18 +57,5 @@ export async function collectTabSnapshots(): Promise<TabSnapshot[]> {
     })
   );
 
-  const result = snapshots.filter((s): s is TabSnapshot => s !== null);
-  const reachableCount = result.filter((s) => s.reachable).length;
-  const withTextCount = result.filter((s) => s.text.length > 0).length;
-  console.log("[tabsearch][popup] collectTabSnapshots: done", {
-    elapsedMs: Math.round(performance.now() - startedAt),
-    totalTabs: result.length,
-    reachableCount,
-    withTextCount,
-    unreachableSamples: result
-      .filter((s) => !s.reachable)
-      .slice(0, 5)
-      .map((s) => s.url),
-  });
-  return result;
+  return snapshots.filter((s): s is TabSnapshot => s !== null);
 }

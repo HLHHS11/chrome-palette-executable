@@ -23,7 +23,6 @@ export type GetPageTextResponseBody = {
  * URL/title フォールバック扱いになるので、ここでは握りつぶさず通常通り返す。
  */
 export function getPageText(): RpcResponse<GetPageTextResponseBody> {
-  const hasBody = !!document.body;
   const raw = document.body?.innerText ?? "";
   const normalized = raw
     .replace(/[\r\n\f]+/g, "\n")
@@ -32,23 +31,5 @@ export function getPageText(): RpcResponse<GetPageTextResponseBody> {
     .trim()
     .slice(0, MAX_TEXT_LENGTH);
   const lang = document.documentElement.lang || "";
-
-  // フル本文も別行で吐く (DevTools でコピー → 検証ワードを目視 grep できるように)。
-  // 構造化ログの方は文字数や preview のサマリだけ。
-  console.log("[tabsearch][content] getPageText", {
-    url: location.href,
-    hasBody,
-    rawLength: raw.length,
-    normalizedLength: normalized.length,
-    readyState: document.readyState,
-    lang,
-  });
-  console.log(
-    "[tabsearch][content] FULL TEXT BEGIN url=" +
-      location.href +
-      "\n" +
-      normalized +
-      "\n[tabsearch][content] FULL TEXT END"
-  );
   return { ok: true, data: { text: normalized, lang } };
 }

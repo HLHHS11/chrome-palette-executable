@@ -176,16 +176,9 @@ function tokenize(query: string): string[] {
 export const tabContentSearcher: Searcher<TabSnapshot> = {
   run(query, candidates) {
     const tokens = tokenize(query);
-    console.log("[tabsearch][search] run", {
-      query,
-      tokens,
-      candidateCount: candidates.length,
-      candidatesWithBody: candidates.filter((c) => c.text.length > 0).length,
-    });
     if (tokens.length === 0) return [];
 
     const hits: SearchHit<TabSnapshot>[] = [];
-    let droppedByGate = 0;
 
     for (const snap of candidates) {
       const titleLower = snap.title.toLowerCase();
@@ -197,27 +190,12 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
       let totalBodyHits = 0;
       let firstBodyHitPos: number | null = null;
       let allTermsHitSomewhere = true;
-      const perTermDiag: Array<{
-        term: string;
-        bodyHits: number;
-        titleHits: number;
-        pathHit: boolean;
-        hostHit: boolean;
-      }> = [];
 
       for (const term of tokens) {
         const bodyPositions = findAllPositions(textLower, term);
         const titlePositions = findAllPositions(titleLower, term);
         const pathHit = pathLower.includes(term);
         const hostHit = hostLower.includes(term);
-
-        perTermDiag.push({
-          term,
-          bodyHits: bodyPositions.length,
-          titleHits: titlePositions.length,
-          pathHit,
-          hostHit,
-        });
 
         if (
           bodyPositions.length === 0 &&
@@ -254,42 +232,10 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
         }
       }
 
-      // 配列のままだと DevTools console で "Array(N)" に折り畳まれて中身が見えないので、
-      // 各タームの内訳を1行文字列にして同行に出す。
-      const perTermDiagStr = perTermDiag
-        .map(
-          (d) =>
-            `${JSON.stringify(d.term)}=body:${d.bodyHits} title:${d.titleHits} path:${d.pathHit ? 1 : 0} host:${d.hostHit ? 1 : 0}`
-        )
-        .join(" | ");
-
-      if (!allTermsHitSomewhere) {
-        droppedByGate++;
-        // 本文があるのに全タームヒットしないタブはそれなりに重要な情報なのでログ。
-        if (snap.text.length > 0) {
-          console.log("[tabsearch][search] dropped (some term missed)", {
-            tabId: snap.tabId,
-            url: snap.url,
-            textLength: snap.text.length,
-            perTermDiagStr,
-            perTermDiag,
-          });
-        }
-        continue;
-      }
+      if (!allTermsHitSomewhere) continue;
 
       let score = totalScore / tokens.length;
       if (totalBodyHits === 0) score *= BODY_ZERO_PENALTY;
-
-      console.log("[tabsearch][search] hit", {
-        tabId: snap.tabId,
-        url: snap.url,
-        score,
-        totalBodyHits,
-        textLength: snap.text.length,
-        perTermDiagStr,
-        perTermDiag,
-      });
 
       const snippet =
         firstBodyHitPos !== null
@@ -308,16 +254,6 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
     }
 
     hits.sort((a, b) => b.score - a.score);
-    console.log("[tabsearch][search] summary", {
-      query,
-      candidateCount: candidates.length,
-      droppedByGate,
-      hitCount: hits.length,
-      topScores: hits.slice(0, 5).map((h) => ({
-        url: h.item.url,
-        score: h.score,
-      })),
-    });
     return hits;
   },
 };

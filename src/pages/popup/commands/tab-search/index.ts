@@ -51,17 +51,9 @@ function startCacheRestoreOnce(): void {
   if (cacheRestoreStarted) return;
   cacheRestoreStarted = true;
   loadFreshCache().then((cache) => {
-    if (!cache) {
-      console.log("[tabsearch][popup] cache restore: no fresh cache");
-      return;
-    }
+    if (!cache) return;
     cachedHits = cache.hits;
     cachedQuery = cache.query;
-    console.log("[tabsearch][popup] cache restore: restored", {
-      query: cache.query,
-      hitCount: cache.hits.length,
-      ageMs: Date.now() - cache.computedAt,
-    });
     // setInput が input 欄を書き換え、parsedInput memo を経由して
     // `s>` モードへスイッチ + 再描画が走る。
     setInput(`${KEYWORD}>${cache.query}`);
@@ -128,23 +120,12 @@ export default function tabSearchSuggestions(): Command[] {
   if (trimmed.length === 0) return [];
 
   if (cachedQuery === trimmed && cachedHits !== null) {
-    console.log("[tabsearch][popup] serving from cache", {
-      query: trimmed,
-      hitCount: cachedHits.length,
-    });
     return cachedHits.map((h) => makeTabCommand(h, h.highlights));
   }
 
   const snaps = snapshotsResource();
-  if (snaps.length === 0) {
-    console.log("[tabsearch][popup] snapshots not ready, showing loading");
-    return [loadingCommand];
-  }
+  if (snaps.length === 0) return [loadingCommand];
 
-  console.log("[tabsearch][popup] running live search", {
-    query: trimmed,
-    snapCount: snaps.length,
-  });
   const hits = tabContentSearcher.run(trimmed, snaps);
 
   const toCache: CachedHit[] = hits.map(({ item, score, highlights }) => ({
