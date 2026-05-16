@@ -47,5 +47,27 @@ li.Entry {
         white-space: nowrap;
       }
     }
+    // スニペット行。
+    // 既定では .text 全体に効いている word-break: break-all を上書きし、
+    // 単語の途中で改行されにくいルールに差し替える。
+    // 既定は 2 行クランプ、選択中行で Space 押下時に snippet_expanded が付き、解除。
+    .snippet {
+      margin-top: 4px;
+      opacity: 0.85;
+      font-weight: 300;
+      font-size: 12px;
+      line-height: 1.45;
+      word-break: normal;
+      overflow-wrap: anywhere;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      &.snippet_expanded {
+        -webkit-line-clamp: unset;
+        display: block;
+        overflow: visible;
+      }
+    }
   }
 }

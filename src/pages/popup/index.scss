@@ -45,7 +45,11 @@ body {
   margin: 0;
   background-color: var(--app-background-color);
   width: 605px;
-  height: 364px;
+  // TODO: FIX #2 問答無用に伸ばせばいいわけじゃない！！
+  // ページまたぎ検索のときだけ、collaps buttonを押したら伸びるようにしたい
+  // 結果件数に応じて縦に伸びる: 元の固定 364px を下限、Chrome popup の上限 600px を上限。
+  min-height: 364px;
+  max-height: 600px;
   color: var(--text-color);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",

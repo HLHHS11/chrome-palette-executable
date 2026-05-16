@@ -1,18 +1,22 @@
 import { RpcRouter } from "./router";
-import { ExtractRpcRequest, ExtractRpcResponse, RpcRoute } from "./types";
+import type {
+  ExtractRouteByName,
+  ExtractRpcRequest,
+  ExtractRpcResponse,
+  RouteName,
+  RpcRoute,
+} from "./types";
 
-export function createLpcClient<const RoutesT extends readonly RpcRoute[]>(
-  routes: RoutesT
+/** 同一実行コンテキスト内のルータに直接ディスパッチする LPC クライアント。型付けは {@link createTabsRpcClient} と同じ。 */
+export function createLpcClient<const R extends readonly RpcRoute[]>(
+  routes: R
 ) {
-  type ResponseT = ExtractRpcResponse<RoutesT[number]>;
-
-  return async function sendLpcMessage(
-    message: ExtractRpcRequest<RoutesT[number]>
-  ): Promise<ResponseT> {
-    const handler = new RpcRouter(routes);
-
-    const response = await handler.handle(message, { source: "local" });
-
-    return response;
+  const router = new RpcRouter(routes);
+  return async function call<N extends RouteName<R>>(
+    message: { name: N } & ExtractRpcRequest<ExtractRouteByName<R, N>>
+  ): Promise<ExtractRpcResponse<ExtractRouteByName<R, N>>> {
+    return (await router.handle(message, {
+      source: "local",
+    })) as ExtractRpcResponse<ExtractRouteByName<R, N>>;
   };
 }

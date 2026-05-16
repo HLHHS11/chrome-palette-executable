@@ -22,6 +22,7 @@ import {
   applyTabNumberingTitle,
   restoreTabNumberingTitle,
 } from "./tab-numbering";
+import { getPageText } from "./tab-search-page-actions";
 
 export const routes = [
   { name: "chatgpt.enableWebSearch", handler: enableChatGptWebSearch },
@@ -50,4 +51,5 @@ export const routes = [
     name: "tabNumbering.restoreTitleInFrame",
     handler: restoreTabNumberingTitle,
   },
+  { name: "tabSearch.getPageText", handler: getPageText },
 ] as const satisfies readonly RpcRoute[];

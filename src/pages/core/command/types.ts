@@ -1,3 +1,5 @@
+import type { HighlightSpec } from "@core/search";
+
 export type CommandKeybind = {
   key?: string;
   code?: string;
@@ -23,6 +25,14 @@ type CommandBase = {
   keyword?: string;
   icon?: string;
   url?: string;
+  /**
+   * 検索結果として表示する際の、各フィールドのマッチ位置情報。
+   *
+   * このプロパティが付いている Command を Entry が描画するとき、
+   * Entry はこのレンジ情報のみを根拠にハイライトを描画する
+   * （fuzzysort などの検索エンジンに直接は依存しない）。
+   */
+  highlights?: HighlightSpec;
 };
 
 export type LegacyCommand = CommandBase & {

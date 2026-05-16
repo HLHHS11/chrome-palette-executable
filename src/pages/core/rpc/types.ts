@@ -65,3 +65,19 @@ export type ExtractRpcRequest<RouteT extends RpcRoute> = RouteT extends RpcRoute
 export type ExtractRpcResponse<RouteT extends RpcRoute> = Awaited<
   ReturnType<RouteT["handler"]>
 >;
+
+/**
+ * ルート配列 `R` で受け付ける `name` リテラルの union を取り出すユーティリティ。
+ *
+ * RPC クライアントの呼び出し時にユーザが書いた `name` が、ここで定義したリテラル
+ * union のどれかであることを TypeScript に強制するために使う。
+ */
+export type RouteName<R extends readonly RpcRoute[]> = R[number]["name"];
+
+/**
+ * ルート配列 `R` から、`name` が `N` に一致するルートを取り出す。
+ */
+export type ExtractRouteByName<
+  R extends readonly RpcRoute[],
+  N extends string,
+> = Extract<R[number], { name: N }>;

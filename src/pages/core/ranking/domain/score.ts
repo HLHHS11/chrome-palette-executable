@@ -19,10 +19,7 @@ export const GLOBAL_QUERY: NormalizedQuery = "";
  * `(commandId, query)` ペアの内部マップキーを生成する。
  * NUL 区切りで衝突可能性のある文字列結合を避ける。
  */
-export function entryKey(
-  commandId: CommandId,
-  query: NormalizedQuery
-): string {
+export function entryKey(commandId: CommandId, query: NormalizedQuery): string {
   return `${query}\u0000${commandId}`;
 }
 
@@ -39,7 +36,8 @@ export function computeBoost(
   commandId: CommandId,
   normalizedQuery: NormalizedQuery
 ): number {
-  const globalHits = entries.get(entryKey(commandId, GLOBAL_QUERY))?.hitCount ?? 0;
+  const globalHits =
+    entries.get(entryKey(commandId, GLOBAL_QUERY))?.hitCount ?? 0;
   if (normalizedQuery === GLOBAL_QUERY) {
     return K_GLOBAL * globalHits;
   }

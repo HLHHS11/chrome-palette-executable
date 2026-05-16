@@ -7,6 +7,7 @@ import geminiSuggestions from "./popup/commands/gemini";
 import generalSuggestions from "./popup/commands/general";
 import gmailSuggestions from "./popup/commands/gmail";
 import historySuggestions from "./popup/commands/history";
+import tabSearchSuggestions from "./popup/commands/tab-search";
 import switchTabSuggestions from "./popup/commands/tabs";
 import themeSuggestions from "./popup/commands/themes";
 import utilsCopyTabLinkSuggestions from "./popup/commands/utils-copy-tab-link";
@@ -24,6 +25,7 @@ export function listLegacyCommands(pageUrl: URL | undefined): LegacyCommand[] {
     ...audibleTabSuggestions(),
     ...bookmarkThisSuggestions(),
     ...switchTabSuggestions(),
+    ...tabSearchSuggestions(),
     ...historySuggestions(),
     ...bookmarkSuggestions(),
     ...extenionsSuggestions(),

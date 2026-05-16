@@ -1,26 +1,23 @@
-import "./App.scss";
-
 import {
   type Command,
   type RpcCommand,
   runRpcCommandInPopup,
 } from "@core/command";
+import { PaletteSearcher } from "@core/palette-search";
 import { type ExtractRpcRequest, createTabsRpcClient } from "@core/rpc";
 import type { routes } from "@pages/content/routes";
-import fuzzysort from "fuzzysort";
-import InfiniteScroll from "solid-infinite-scroll";
 import {
-  Show,
   createEffect,
   createMemo,
   createResource,
   createSignal,
 } from "solid-js";
-import { tinykeys } from "tinykeys";
 
 import { listAllCommands } from "../command";
-import Entry from "./Entry";
-import Shortcut from "./Shortcut";
+import PaletteShell from "./PaletteShell";
+import tabSearchSuggestions, {
+  TAB_SEARCH_KEYWORD,
+} from "./commands/tab-search";
 import { rankingService } from "./util/ranking";
 import { createStoredSignal, inputSignal, parsedInput } from "./util/signals";
 
@@ -59,46 +56,31 @@ const commandsLimit = 75;
 
 const [scrollIndex, setScrollIndex] = createSignal(commandsLimit);
 
-const matches = createMemo(() => {
-  const rawMatches = fuzzysort.go(parsedInput().query, allCommands(), {
-    threshold: -10000, // don't return bad results
-    limit: scrollIndex(), // Don't return more results than this (lower is faster)
-    all: true, // If true, returns all results for an empty search
-    keys: ["title", "subtitle", "url"], // For when targets are objects (see its example usage)
-    // keys: null, // For when targets are objects (see its example usage)
-    // scoreFn: null, // For use with `keys` (see its example usage)
+// TODO: FIX #2
+// 本来 "全タブ検索の結果" は Command ではなく、専用の結果型を持って独自の描画パスを
+// 通って表示されるべきもの。今は popup が Command[] しか描画できないため、tab-search が
+// 結果を Command の皮に詰めて返している。それに合わせてここでも「`s>` モードなら
+// tab-search を直接呼ぶ」という keyword ベタ書きの dispatch を書いている。
+//
+// Palette Shell + Surface 抽象 (Shell に "現在アクティブな Surface" を注入し、Surface が
+// 自前の描画 / 状態 / キーバインドを持つ) を入れると、この dispatch も Command 偽装も
+// 不要になり、Surface 追加 (ブックマーク横断 / 設定パネル / LLM チャット等) も並列に
+// 扱えるようになる。次回着手予定。
+const filteredCommands = createMemo<Command[]>(() => {
+  // TODO: FIX #2 たぶん、 `TAB_SEARCH_KEYWORD` のチェックも
+  // ハードコーディングに頼らずやる方法があると思うんだが…
+  if (parsedInput().keyword === TAB_SEARCH_KEYWORD) {
+    return tabSearchSuggestions();
+  }
+  const searcher = new PaletteSearcher({
+    rankingService: rankingService(),
+    limit: scrollIndex(),
   });
-  const service = rankingService();
-  if (!service) return [...rawMatches];
-  return service.applyBoost(rawMatches, parsedInput().query, {
-    getCommandId: (m) => m.obj.title,
-    getRawScore: (m) => m.score,
-  });
+  const hits = searcher.run(parsedInput().query, allCommands());
+  return hits.map((h) => h.item);
 });
 
-const filteredCommands = createMemo(() => {
-  /* The filtered commands are contained in matches and are stable references.
-   * This means they don't change while you type, and this allows the
-   * <Each /> component (or <InfiniteScroll />) to use them as keys,
-   * and not re-create dom elements.
-   */
-  return matches().map((match) => match.obj);
-});
-
-const [selectedI_internal, setSelectedI] = createSignal(0);
-
-const selectedI = createMemo(() => {
-  const n = filteredCommands().length;
-  return ((selectedI_internal() % n) + n) % n;
-});
-
-createEffect(() => {
-  inputValue();
-  setSelectedI(0);
-});
-
-// TODO: #1 REFACTOR そもそもApp.tsxにおいておくべきじゃない
-export const runCommand = async (command: Command) => {
+const runCommand = async (command: Command) => {
   try {
     const service = rankingService();
     if (service) {
@@ -118,88 +100,21 @@ export const runCommand = async (command: Command) => {
   command.handler?.();
 };
 
-tinykeys(window, {
-  ArrowUp: (e) => {
-    e.preventDefault();
-    setSelectedI((i) => i - 1);
-  },
-  ArrowDown: (e) => {
-    e.preventDefault();
-    setSelectedI((i) => i + 1);
-  },
-  Enter: (e) => {
-    e.preventDefault();
-    const selected = filteredCommands()[selectedI()];
-    runCommand(selected);
-  },
-});
-
-const PinWarning = () => {
-  const [userSettings] = createResource(() => chrome.action.getUserSettings());
-  const isNotPinned = createMemo(
-    () => userSettings() && userSettings()?.isOnToolbar === false
-  );
-  return (
-    <Show when={isNotPinned()}>
-      <div style={{ color: "red", padding: "10px" }}>
-        Pin the extension to the toolbar for faster load
-      </div>
-    </Show>
-  );
-};
 const App = () => {
+  // 入力が変化したら次回表示のページサイズを初期値に戻す。
+  // scrollIndex は「fuzzysort が返す件数の上限」を兼ねているので、
+  // クエリが変わった瞬間に下位ページの状態を持ち越さないようリセットする。
   createEffect(() => {
     inputValue();
     setScrollIndex(commandsLimit);
   });
   return (
-    <>
-      <div
-        class="App"
-        onBlur={() => {
-          window.close();
-        }}
-      >
-        <div class="input_wrap">
-          <input
-            class="input"
-            autofocus
-            placeholder="Type to search..."
-            value={inputValue()}
-            onInput={(e) => {
-              setInputValue(e.target.value);
-              setSelectedI(0);
-            }}
-          />
-          <Shortcut
-            onClick={() =>
-              chrome.tabs.create({ url: "chrome://extensions/shortcuts" })
-            }
-            keys={shortcut()}
-          />
-        </div>
-        <ul class="list">
-          <InfiniteScroll
-            loadingMessage={<></>}
-            each={filteredCommands()}
-            hasMore={true}
-            next={() => setScrollIndex(scrollIndex() * 2)}
-          >
-            {(command, i) => {
-              const isSelected = createMemo(() => i() === selectedI());
-              return (
-                <Entry
-                  isSelected={isSelected()}
-                  keyResults={matches()[i()]}
-                  command={command}
-                />
-              );
-            }}
-          </InfiniteScroll>
-        </ul>
-      </div>
-      <PinWarning />
-    </>
+    <PaletteShell
+      shortcut={shortcut}
+      commands={filteredCommands}
+      onSelect={runCommand}
+      onLoadMore={() => setScrollIndex(scrollIndex() * 2)}
+    />
   );
 };
 
