@@ -89,6 +89,32 @@ async function runCopyMarkdownTabLink(): Promise<void> {
   }
 }
 
+async function runCopyPlainUrlTabLink(): Promise<void> {
+  try {
+    const activeTab = await pickActiveTab();
+    const rawPageUrl = activeTab?.url;
+
+    if (!rawPageUrl) throw new Error("現在のタブの URL が取得できません。");
+
+    const maybeTextDirective = await callContentRpc({
+      name: "linkCopy.getSelectionTextDirective",
+    }).then((res) => {
+      if (!res.ok) return null;
+      if (!("data" in res)) return null;
+      return res.data.textDirective;
+    });
+    const pageUrl = applyTextFragmentDirectiveToPageUrl(
+      rawPageUrl,
+      maybeTextDirective
+    );
+    await navigator.clipboard.writeText(pageUrl);
+    window.close();
+  } catch (err) {
+    console.error(err);
+    setInputValue("エラーが発生しました。");
+  }
+}
+
 async function runCopyRichTextTabLink(): Promise<void> {
   try {
     const activeTab = await pickActiveTab();
@@ -137,6 +163,11 @@ export default function getUtilsCopyTabLinkCommands(): Command[] {
       title: "Utils: リッチテキストで現在のタブのリンクをコピー",
       subtitle: "Utils: Copy Active Tab Link as Rich Text",
       handler: runCopyRichTextTabLink,
+    },
+    {
+      title: "Utils: 現在のタブの URL をコピー",
+      subtitle: "Utils: Copy Active Tab URL",
+      handler: runCopyPlainUrlTabLink,
     },
   ];
 }
