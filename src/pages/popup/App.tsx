@@ -15,11 +15,19 @@ import {
 
 import { listAllCommands } from "../command";
 import PaletteShell from "./PaletteShell";
-import tabSearchSuggestions, {
+import {
   TAB_SEARCH_KEYWORD,
+  TabSearch,
+  type TabSnapshot,
+  collectTabSnapshots,
 } from "./commands/tab-search";
 import { rankingService } from "./util/ranking";
-import { createStoredSignal, inputSignal, parsedInput } from "./util/signals";
+import {
+  createLazyResource,
+  createStoredSignal,
+  inputSignal,
+  parsedInput,
+} from "./util/signals";
 
 const [shortcut, setShortcut] = createStoredSignal("_execute_action", "?");
 
@@ -34,6 +42,12 @@ const [inputValue, setInputValue] = inputSignal;
 // 修正したいところ。
 const callTabsRpc = createTabsRpcClient<typeof routes>();
 type ContentRpcMessage = ExtractRpcRequest<(typeof routes)[number]>;
+
+const tabSnapshots = createLazyResource<TabSnapshot[]>([], () =>
+  collectTabSnapshots()
+);
+const tabSearch = new TabSearch({ corpus: tabSnapshots });
+tabSearch.restoreSession();
 
 const [activeTabPageUrl] = createResource(
   async (): Promise<URL | undefined> => {
@@ -56,7 +70,7 @@ const commandsLimit = 75;
 
 const [scrollIndex, setScrollIndex] = createSignal(commandsLimit);
 
-// TODO: FIX #2
+// TODO: #2 FIX
 // 本来 "全タブ検索の結果" は Command ではなく、専用の結果型を持って独自の描画パスを
 // 通って表示されるべきもの。今は popup が Command[] しか描画できないため、tab-search が
 // 結果を Command の皮に詰めて返している。それに合わせてここでも「`s>` モードなら
@@ -67,10 +81,10 @@ const [scrollIndex, setScrollIndex] = createSignal(commandsLimit);
 // 不要になり、Surface 追加 (ブックマーク横断 / 設定パネル / LLM チャット等) も並列に
 // 扱えるようになる。次回着手予定。
 const filteredCommands = createMemo<Command[]>(() => {
-  // TODO: FIX #2 たぶん、 `TAB_SEARCH_KEYWORD` のチェックも
+  // TODO: #2 FIX たぶん、 `TAB_SEARCH_KEYWORD` のチェックも
   // ハードコーディングに頼らずやる方法があると思うんだが…
   if (parsedInput().keyword === TAB_SEARCH_KEYWORD) {
-    return tabSearchSuggestions();
+    return tabSearch.search(parsedInput().query);
   }
   const searcher = new PaletteSearcher({
     rankingService: rankingService(),

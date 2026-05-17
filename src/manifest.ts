@@ -36,6 +36,18 @@ const manifest = defineManifest(async () => ({
         linux: "Ctrl+Shift+P",
       },
     },
+    "search-across-tabs": {
+      description: "Open palette in cross-tab full-text search mode",
+      // 本来は Cmd+Shift+F にしたかったが、このキーバインドは
+      // Chrome デフォルトの「全画面表示でツールバーを常に表示」(Mac) と衝突してしまう。
+      // 仕方なく、Alt (Option) + Shift + F にした。
+      suggested_key: {
+        windows: "Alt+Shift+F",
+        mac: "Alt+Shift+F",
+        chromeos: "Alt+Shift+F",
+        linux: "Alt+Shift+F",
+      },
+    },
   },
   // 「リンクをコピー」コマンドが任意のWebページの選択範囲を RPC 経由で取得するため、
   // matches は <all_urls> を指定している。特定サイト向けのアクション

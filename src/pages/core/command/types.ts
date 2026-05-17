@@ -51,3 +51,10 @@ export type RpcCommand<RpcRequest extends object = { name: string }> =
   };
 
 export type Command = LegacyCommand | RpcCommand;
+
+/**
+ * Palette の表示パイプに乗せるために Command 構造を借りている行。
+ * 「ユーザーが能動的に呼び出すコマンド」ではない (loading placeholder / 検索結果行など)。
+ * TODO: #2 FIX で Surface 抽象が入ったら消したい。
+ */
+export type PaletteRow = Command;

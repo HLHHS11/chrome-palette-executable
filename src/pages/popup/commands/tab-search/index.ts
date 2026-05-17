@@ -1,150 +1,94 @@
-import type { Command } from "@core/command";
-import type { HighlightSpec } from "@core/search";
+import type { Command, PaletteRow } from "@core/command";
+import { CrossRuntimeMessenger } from "@core/cross-runtime-message";
 
-import { createLazyResource, matchCommand, setInput } from "~/util/signals";
+import { matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../../Entry";
-import { collectTabSnapshots } from "./collect-tab-snapshots";
-import { type CachedHit, loadFreshCache, saveCache } from "./result-cache";
-import { tabContentSearcher } from "./tab-content-searcher";
+import { hotkeyLaunchIntentMessage } from "./hotkey-launch-intent";
+import { ResultCacheStore } from "./result-cache";
+import { TabSearchRunner } from "./search-runner";
 import type { TabSnapshot } from "./types";
 
-/**
- * Cross-Tab Full-Text Search のコマンドパレットキーワード。
- *
- * App.tsx 側でも参照しており、このキーワードが入力されているときは
- * palette の汎用 fuzzysort searcher をスキップする。
- * 理由: tab-search の Searcher は本文中心のスコアリングを既に終えており、
- * 上から title/subtitle/url ベースの fuzzysort を重ねるとヒットが消えてしまう。
- *
- * TODO: FIX #2
- * この機能は本来 "Command" ではなく独立した Palette Surface
- * として実装されるべき (App.tsx の TODO: FIX #2 コメント参照)。現在は Command 型へ
- * 無理やり詰め込む形になっており、`makeTabCommand` で handler に挙動を埋め込んだり、
- * App.tsx 側で `s>` モードを特別扱いして palette searcher を skip したりしている。
- * Surface 抽象を導入したらここは `TabSearchSurface` に格上げし、Command 経由ではなく
- * 独自の結果型 (TabSearchResult) + 独自の Entry 風コンポーネントを Shell に描画させる。
- */
+export { collectTabSnapshots } from "./collect-tab-snapshots";
+export type { TabSnapshot } from "./types";
+
 export const TAB_SEARCH_KEYWORD = "s";
-const KEYWORD = TAB_SEARCH_KEYWORD;
-
-/**
- * 全タブのスナップショット (本文 + メタ情報) を popup 起動時に 1 度だけ取得。
- * `createLazyResource` の挙動: 最初の呼び出しで非同期 fetch を発火し、以降は最新値を返す。
- */
-const snapshotsResource = createLazyResource<TabSnapshot[]>([], () =>
-  collectTabSnapshots()
-);
-
-/**
- * モジュールスコープの「直近検索結果」キャッシュ。
- *
- * - `chrome.storage.session` への永続化は別途行う ({@link saveCache}/{@link loadFreshCache})。
- * - ここの変数は、現在の popup セッション内で再レンダリング間で再利用するため。
- * - `tabSearchSuggestions` 内から書き換える (Solid の memo 内副作用だが冪等なので OK)。
- */
-let cachedHits: CachedHit[] | null = null;
-let cachedQuery: string | null = null;
-
-let cacheRestoreStarted = false;
-function startCacheRestoreOnce(): void {
-  if (cacheRestoreStarted) return;
-  cacheRestoreStarted = true;
-  loadFreshCache().then((cache) => {
-    if (!cache) return;
-    cachedHits = cache.hits;
-    cachedQuery = cache.query;
-    // setInput が input 欄を書き換え、parsedInput memo を経由して
-    // `s>` モードへスイッチ + 再描画が走る。
-    setInput(`${KEYWORD}>${cache.query}`);
-  });
-}
-
-function makeTabCommand(
-  snap: Pick<
-    TabSnapshot,
-    "tabId" | "windowId" | "title" | "host" | "path" | "favicon"
-  >,
-  highlights: HighlightSpec | undefined
-): Command {
-  // `url` フィールドは敢えてセットしない:
-  // - Command.url がセットされていると runCommand が `chrome.tabs.create({url})` を
-  //   呼び新規タブを開いてしまう (tab-search の意図は既存タブにフォーカスするだけ)
-  // - 表示上も subtitle (= host+path) と URL 行で同じ URL が二重に出てしまう
-  return {
-    title: snap.title,
-    subtitle: snap.host + snap.path,
-    icon: snap.favicon,
-    highlights,
-    handler: () => {
-      chrome.tabs.update(snap.tabId, { active: true });
-      chrome.windows.update(snap.windowId, { focused: true });
-      window.close();
-    },
-  };
-}
 
 const entryCommand: Command = {
   title: "Search across tabs",
   subtitle: "全タブ横断で本文を検索",
-  keyword: `${KEYWORD}>`,
+  keyword: `${TAB_SEARCH_KEYWORD}>`,
   icon: faviconURL("about:blank"),
   handler: () => {
-    setInput(`${KEYWORD}>`);
+    setInput(`${TAB_SEARCH_KEYWORD}>`);
   },
 };
 
-const loadingCommand: Command = {
-  title: "Searching across tabs…",
-  subtitle: "タブ本文を収集中",
-  icon: faviconURL("about:blank"),
-  handler: () => {
-    /* no-op */
-  },
+type Deps = {
+  corpus: () => readonly TabSnapshot[];
 };
 
 /**
- * `s>` モードの検索結果を Command[] として返す。`s>` モード外では入口コマンド 1 件だけ。
+ * tab-search 機能の外部ファサード。内部の Store / Runner / 起動シーケンスを束ね、
+ * 外には `restoreSession()` と `search(query)` だけを見せる。
+ * Solid 等のフロントエンド都合は持ち込まないので、corpus accessor だけ外から注入する。
+ */
+export class TabSearch {
+  private readonly messenger = new CrossRuntimeMessenger();
+  private readonly cache = new ResultCacheStore();
+  private readonly runner: TabSearchRunner;
+
+  constructor({ corpus }: Deps) {
+    this.runner = new TabSearchRunner({
+      ofSource: corpus,
+      cacheStore: this.cache,
+    });
+  }
+
+  /**
+   * popup 起動直後のセッション復元フェーズ。
+   * - 直近 60 秒以内に保存されたキャッシュがあれば、結果と入力欄に流し込む
+   * - background から hotkey 経由で開かれた場合、入力欄を `s>` に切り替える
+   */
+  restoreSession(): void {
+    this.messenger
+      .take(hotkeyLaunchIntentMessage)
+      .then((intent) => {
+        if (intent) setInput(`${TAB_SEARCH_KEYWORD}>`);
+      })
+      .catch((e) => {
+        console.error(
+          "Failed to take tab-search hotkey launch intent. Details:",
+          e
+        );
+      });
+
+    this.cache
+      .loadFresh()
+      .then((restored) => {
+        if (!restored) return;
+        this.runner.primeFromCache(restored.hits, restored.query);
+        setInput(`${TAB_SEARCH_KEYWORD}>${restored.query}`);
+      })
+      .catch((e) => {
+        console.error("Failed to restore tab-search session. Details:", e);
+      });
+  }
+
+  /** クエリに対してインクリメンタル検索を実行し、結果を palette 行として返す。 */
+  search(query: string): PaletteRow[] {
+    return this.runner.run(query);
+  }
+}
+
+/**
+ * パレットへの入口コマンドのみを返す。`s>` モードの検索結果は別経路で描画される。
  *
- * - キャッシュヒット (cachedQuery と一致): 即座にキャッシュから commands を組み立てる。
- *   ポップアップ再オープン時の高速復元用。
- * - キャッシュミス: snapshots を使ってライブ検索 → 結果をキャッシュ。snapshots がまだ
- *   ロード中 (= 空配列) の間は "Searching…" プレースホルダ。
+ * TODO: #2 FIX
+ * 本来 Surface 抽象に格上げするべきで、その際は entryCommand すら不要になる。
  */
 export default function tabSearchSuggestions(): Command[] {
-  startCacheRestoreOnce();
-  const { isMatch, isCommand, query } = matchCommand(KEYWORD);
-  if (!isMatch) {
-    // 他のキーワードコマンドモード中は何も出さない。通常時は入口だけ。
-    return isCommand ? [] : [entryCommand];
-  }
-
-  const trimmed = query.trim();
-  if (trimmed.length === 0) return [];
-
-  if (cachedQuery === trimmed && cachedHits !== null) {
-    return cachedHits.map((h) => makeTabCommand(h, h.highlights));
-  }
-
-  const snaps = snapshotsResource();
-  if (snaps.length === 0) return [loadingCommand];
-
-  const hits = tabContentSearcher.run(trimmed, snaps);
-
-  const toCache: CachedHit[] = hits.map(({ item, score, highlights }) => ({
-    tabId: item.tabId,
-    windowId: item.windowId,
-    title: item.title,
-    url: item.url,
-    host: item.host,
-    path: item.path,
-    favicon: item.favicon,
-    score,
-    highlights,
-  }));
-  cachedHits = toCache;
-  cachedQuery = trimmed;
-  saveCache(trimmed, toCache);
-
-  return hits.map(({ item, highlights }) => makeTabCommand(item, highlights));
+  const { isMatch, isCommand } = matchCommand(TAB_SEARCH_KEYWORD);
+  if (isMatch) return [];
+  return isCommand ? [] : [entryCommand];
 }
