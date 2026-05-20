@@ -3,7 +3,6 @@ import { RpcResponse, RpcVoidResponseBody } from "@core/rpc";
 import {
   simulateMouseClick,
   simulateMouseClickSequence,
-  waitForSelector,
   waitForXPath,
 } from "../lib/dom/selector";
 import { startUserKeydownOverlay } from "./common/user-keydown-overlay";
@@ -121,34 +120,39 @@ export function stopGeminiGeneration(): RpcResponse<RpcVoidResponseBody> {
 
 let activeFileUploadCleanup: (() => void) | null = null;
 
-export async function openGeminiFileUpload(): Promise<
+export async function openGeminiFileAttach(): Promise<
   RpcResponse<RpcVoidResponseBody>
 > {
   activeFileUploadCleanup?.();
   activeFileUploadCleanup = null;
 
-  // NOTE: UI上の文言が変更されたら、ここも修正が必要になる！
   const menuToggleButton = document.querySelector<HTMLElement>(
-    'button[aria-label="[ファイルをアップロード] メニューを開く"]'
+    '[aria-label="アップロードとツール"]'
   );
   if (!menuToggleButton) {
     return {
       ok: false,
-      error: "アップロードメニューを開くボタンが見つかりません。",
+      error: "「アップロードとツール」ボタンが見つかりません。",
     };
   }
   simulateMouseClick(menuToggleButton);
 
-  // メニュー展開後にレンダリングされるので waitForSelector で出現を待つ。
-  // NOTE: UI上の文言が変更されたら、ここも修正が必要になる！
-  const uploadItem = await waitForSelector(
-    '[aria-label="ファイルをアップロード. ドキュメント、データ、コードファイル"]',
-    { timeoutMs: 3000 }
-  );
+  let uploadItem: Element;
+  try {
+    uploadItem = await waitForXPath(
+      "//span[normalize-space(.)='ファイルをアップロード']",
+      { timeoutMs: 3000 }
+    );
+  } catch {
+    return {
+      ok: false,
+      error: "「ファイルをアップロード」の項目が見つかりません。",
+    };
+  }
   if (!(uploadItem instanceof HTMLElement)) {
     return {
       ok: false,
-      error: "アップロードメニュー項目が見つかりません。",
+      error: "「ファイルをアップロード」の項目が見つかりません。",
     };
   }
 

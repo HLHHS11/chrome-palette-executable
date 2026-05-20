@@ -10,7 +10,7 @@ import {
 } from "./chatgpt-page-actions";
 import { selectClaudeModel } from "./claude-page-actions";
 import {
-  openGeminiFileUpload,
+  openGeminiFileAttach,
   selectGeminiModel,
   stopGeminiGeneration,
   toggleGeminiSidebar,
@@ -34,7 +34,7 @@ export const routes = [
   { name: "chatgpt.stopGeneration", handler: stopChatGptGeneration },
   { name: "gemini.toggleSidebar", handler: toggleGeminiSidebar },
   { name: "gemini.stopGeneration", handler: stopGeminiGeneration },
-  { name: "gemini.openFileUpload", handler: openGeminiFileUpload },
+  { name: "gemini.openFileAttach", handler: openGeminiFileAttach },
   { name: "gemini.selectModel", handler: selectGeminiModel },
   { name: "rovo.stopGeneration", handler: stopRovoGeneration },
   { name: "rovo.selectModel", handler: selectRovoModel },

@@ -91,9 +91,9 @@ export function getGeminiRpcCommands(
       ],
     },
     {
-      title: "Gemini: ファイルをアップロード",
-      subtitle: "Gemini: Upload File",
-      message: { name: "gemini.openFileUpload" },
+      title: "Gemini: ファイルを添付",
+      subtitle: "Gemini: Attach File",
+      message: { name: "gemini.openFileAttach" },
     },
     ...GEMINI_MODEL_COMMANDS.map((row) => ({
       title: `Gemini: ${row.tierLabelJa}（${row.modeLabelJa}）`,
