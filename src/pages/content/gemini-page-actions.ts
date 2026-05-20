@@ -45,6 +45,28 @@ export async function selectGeminiModel(
   return { ok: true, data: {} };
 }
 
+export function toggleGeminiSidebar(): RpcResponse<RpcVoidResponseBody> {
+  const closeBtn = document.querySelector<HTMLElement>(
+    'button[aria-label="サイドバーを閉じる"]'
+  );
+  if (closeBtn) {
+    simulateMouseClick(closeBtn);
+    return { ok: true, data: {} };
+  }
+
+  const openBtn = document.querySelector<HTMLButtonElement>(
+    'button[aria-label="サイドバーを開く"]'
+  );
+  if (!openBtn) {
+    return { ok: false, error: "開くボタンが見つかりません。" };
+  }
+  if (openBtn.disabled) {
+    return { ok: false, error: "サイドバーを開くボタンが無効です。" };
+  }
+  simulateMouseClick(openBtn);
+  return { ok: true, data: {} };
+}
+
 export function stopGeminiGeneration(): RpcResponse<RpcVoidResponseBody> {
   // NOTE: UI上の文言が変更されたら、ここも修正が必要になる！
   const stopButton = document.querySelector<HTMLElement>(

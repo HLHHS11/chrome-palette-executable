@@ -13,6 +13,7 @@ import {
   openGeminiFileUpload,
   selectGeminiModel,
   stopGeminiGeneration,
+  toggleGeminiSidebar,
 } from "./gemini-page-actions";
 import { startGmailArchiveMode } from "./gmail-page-actions";
 import { exportGoogleDocsAsMarkdown } from "./google-docs-page-actions";
@@ -31,6 +32,7 @@ export const routes = [
   { name: "chatgpt.selectModel", handler: selectChatGptModel },
   { name: "chatgpt.openFileAttach", handler: openChatGptFileAttach },
   { name: "chatgpt.stopGeneration", handler: stopChatGptGeneration },
+  { name: "gemini.toggleSidebar", handler: toggleGeminiSidebar },
   { name: "gemini.stopGeneration", handler: stopGeminiGeneration },
   { name: "gemini.openFileUpload", handler: openGeminiFileUpload },
   { name: "gemini.selectModel", handler: selectGeminiModel },

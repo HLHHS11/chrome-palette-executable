@@ -3,7 +3,6 @@ import audibleTabSuggestions from "./popup/commands/audio";
 import bookmarkThisSuggestions from "./popup/commands/bookmark-this";
 import bookmarkSuggestions from "./popup/commands/bookmarks";
 import extenionsSuggestions from "./popup/commands/extensions";
-import geminiSuggestions from "./popup/commands/gemini";
 import generalSuggestions from "./popup/commands/general";
 import gmailSuggestions from "./popup/commands/gmail";
 import historySuggestions from "./popup/commands/history";
@@ -29,7 +28,6 @@ export function listLegacyCommands(pageUrl: URL | undefined): LegacyCommand[] {
     ...historySuggestions(),
     ...bookmarkSuggestions(),
     ...extenionsSuggestions(),
-    ...geminiSuggestions(pageUrl),
     ...gmailSuggestions(pageUrl),
     ...youtubeSuggestions(pageUrl),
     ...websitesSuggestions(),
