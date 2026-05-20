@@ -4,18 +4,30 @@ import {
   simulateMouseClick,
   simulateMouseClickSequence,
   waitForSelector,
+  waitForXPath,
 } from "../lib/dom/selector";
 import { startUserKeydownOverlay } from "./common/user-keydown-overlay";
 
 type SelectGeminiModelParams = {
-  model: "instant" | "thinking" | "pro";
+  tier: "flash" | "flash-lite" | "pro";
+  mode: "instant" | "thinking";
 };
 
-export async function selectGeminiModel(
-  params: SelectGeminiModelParams
-): Promise<RpcResponse<RpcVoidResponseBody>> {
+// Gemini のモデル行はバージョン表記付きラベル (例: 「3.5 Flash」) の span として出る。
+// CSS で安定したフックが無いため XPath で取得する。日本語 UI・上記ラベル文言前提。
+const GEMINI_MODEL_TIER_XPATH: Record<SelectGeminiModelParams["tier"], string> =
+  {
+    "flash-lite": "//span[contains(., 'Flash-Lite')]",
+    flash: "//span[contains(., 'Flash') and not(contains(., 'Flash-Lite'))]",
+    pro: "//span[contains(., ' Pro')]",
+  };
+
+const THINKING_LEVEL_ROW_XPATH = "//span[contains(., '思考レベル')]";
+const GEMINI_MODEL_MENU_BUTTON = 'button[data-test-id="bard-mode-menu-button"]';
+
+function openGeminiModelMenu(): RpcResponse<RpcVoidResponseBody> | undefined {
   const menuButton = document.querySelector<HTMLElement>(
-    'button[data-test-id="bard-mode-menu-button"]'
+    GEMINI_MODEL_MENU_BUTTON
   );
   if (!menuButton) {
     return {
@@ -24,24 +36,52 @@ export async function selectGeminiModel(
     };
   }
   simulateMouseClick(menuButton);
+  return undefined;
+}
 
-  // NOTE: UI上の文言 (test id末尾の日本語含む) が変更されたら、ここも修正が必要になる！
-  const optionTestId = (() => {
-    switch (params.model) {
-      case "instant":
-        return "bard-mode-option-高速モード";
-      case "thinking":
-        return "bard-mode-option-思考モード";
-      case "pro":
-        return "bard-mode-option-pro";
-    }
-  })();
+export async function selectGeminiModel(
+  params: SelectGeminiModelParams
+): Promise<RpcResponse<RpcVoidResponseBody>> {
+  const stop = openGeminiModelMenu();
+  if (stop) return stop;
 
-  const modelOption = await waitForSelector(
-    `[data-test-id="${optionTestId}"]`,
-    { timeoutMs: 3000 }
-  );
-  simulateMouseClick(modelOption);
+  const tierXpath = GEMINI_MODEL_TIER_XPATH[params.tier];
+  let tierEl: Element;
+  try {
+    tierEl = await waitForXPath(tierXpath, { timeoutMs: 3000 });
+  } catch {
+    return { ok: false, error: "モデル名の項目が見つかりません。" };
+  }
+  simulateMouseClick(tierEl);
+
+  await new Promise<void>((r) => setTimeout(r, 150));
+
+  const stop2 = openGeminiModelMenu();
+  if (stop2) return stop2;
+
+  let thinkingLevelEl: Element;
+  try {
+    thinkingLevelEl = await waitForXPath(THINKING_LEVEL_ROW_XPATH, {
+      timeoutMs: 3000,
+    });
+  } catch {
+    return { ok: false, error: "思考レベルの項目が見つかりません。" };
+  }
+  simulateMouseClick(thinkingLevelEl);
+
+  const effortLabel = params.mode === "instant" ? "標準" : "拡張";
+  const effortXpath = `//span[normalize-space(.)="${effortLabel}"]`;
+  let effortEl: Element;
+  try {
+    effortEl = await waitForXPath(effortXpath, { timeoutMs: 3000 });
+  } catch {
+    return {
+      ok: false,
+      error: `「${effortLabel}」の項目が見つかりません。`,
+    };
+  }
+  simulateMouseClick(effortEl);
+
   return { ok: true, data: {} };
 }
 

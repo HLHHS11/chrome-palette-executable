@@ -24,6 +24,37 @@ export async function waitForSelector(
   });
 }
 
+export async function waitForXPath(
+  xpath: string,
+  options?: { timeoutMs?: number; intervalMs?: number }
+): Promise<Element> {
+  const timeoutMs = options?.timeoutMs ?? 10_000;
+  const intervalMs = options?.intervalMs ?? 50;
+  const deadline = Date.now() + timeoutMs;
+
+  return await new Promise((resolve, reject) => {
+    const tick = () => {
+      const node = document.evaluate(
+        xpath,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null
+      ).singleNodeValue;
+      if (node instanceof Element) {
+        resolve(node);
+        return;
+      }
+      if (Date.now() >= deadline) {
+        reject(new Error(`waitForXPath timeout: ${xpath}`));
+        return;
+      }
+      setTimeout(tick, intervalMs);
+    };
+    tick();
+  });
+}
+
 export type PollResult<T> =
   | { status: "found"; value: T }
   | { status: "pending"; value: null }

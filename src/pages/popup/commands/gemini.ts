@@ -4,6 +4,67 @@ import type { routes } from "@src/pages/content/routes";
 
 type ContentRpcMessage = ExtractRpcRequest<(typeof routes)[number]>;
 
+type GeminiModelTier = "flash" | "flash-lite" | "pro";
+type GeminiModelMode = "instant" | "thinking";
+
+const GEMINI_MODEL_COMMANDS: {
+  tier: GeminiModelTier;
+  tierLabelJa: string;
+  tierLabelEn: string;
+  mode: GeminiModelMode;
+  modeLabelJa: string;
+  modeLabelEn: string;
+}[] = [
+  {
+    tier: "flash",
+    tierLabelJa: "Flash",
+    tierLabelEn: "Flash",
+    mode: "instant",
+    modeLabelJa: "Instant",
+    modeLabelEn: "Instant",
+  },
+  {
+    tier: "flash",
+    tierLabelJa: "Flash",
+    tierLabelEn: "Flash",
+    mode: "thinking",
+    modeLabelJa: "Thinking",
+    modeLabelEn: "Thinking",
+  },
+  {
+    tier: "flash-lite",
+    tierLabelJa: "Flash-Lite",
+    tierLabelEn: "Flash-Lite",
+    mode: "instant",
+    modeLabelJa: "Instant",
+    modeLabelEn: "Instant",
+  },
+  {
+    tier: "flash-lite",
+    tierLabelJa: "Flash-Lite",
+    tierLabelEn: "Flash-Lite",
+    mode: "thinking",
+    modeLabelJa: "Thinking",
+    modeLabelEn: "Thinking",
+  },
+  {
+    tier: "pro",
+    tierLabelJa: "Pro",
+    tierLabelEn: "Pro",
+    mode: "instant",
+    modeLabelJa: "Instant",
+    modeLabelEn: "Instant",
+  },
+  {
+    tier: "pro",
+    tierLabelJa: "Pro",
+    tierLabelEn: "Pro",
+    mode: "thinking",
+    modeLabelJa: "Thinking",
+    modeLabelEn: "Thinking",
+  },
+];
+
 export function getGeminiRpcCommands(
   pageUrl: URL | undefined
 ): RpcCommand<ContentRpcMessage>[] {
@@ -34,20 +95,14 @@ export function getGeminiRpcCommands(
       subtitle: "Gemini: Upload File",
       message: { name: "gemini.openFileUpload" },
     },
-    {
-      title: "Gemini: Instant モデルを選択",
-      subtitle: "Gemini: Select Instant Model",
-      message: { name: "gemini.selectModel", model: "instant" },
-    },
-    {
-      title: "Gemini: Thinking モデルを選択",
-      subtitle: "Gemini: Select Thinking Model",
-      message: { name: "gemini.selectModel", model: "thinking" },
-    },
-    {
-      title: "Gemini: Pro モデルを選択",
-      subtitle: "Gemini: Select Pro Model",
-      message: { name: "gemini.selectModel", model: "pro" },
-    },
+    ...GEMINI_MODEL_COMMANDS.map((row) => ({
+      title: `Gemini: ${row.tierLabelJa}（${row.modeLabelJa}）`,
+      subtitle: `Gemini: Select ${row.tierLabelEn} / ${row.modeLabelEn}`,
+      message: {
+        name: "gemini.selectModel" as const,
+        tier: row.tier,
+        mode: row.mode,
+      },
+    })),
   ];
 }
