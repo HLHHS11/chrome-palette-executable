@@ -12,7 +12,7 @@ import { tinykeys } from "tinykeys";
 
 import Entry from "./Entry";
 import Shortcut from "./Shortcut";
-import { inputSignal } from "./util/signals";
+import { inputSignal, takeInputSelectionRange } from "./util/signals";
 
 const [inputValue, setInputValue] = inputSignal;
 
@@ -122,6 +122,20 @@ export default function PaletteShell(props: {
     () => props.commands(),
     (item) => props.onSelect(item)
   );
+  let inputRef: HTMLInputElement | undefined;
+
+  createEffect(() => {
+    const range = takeInputSelectionRange();
+    if (!range) return;
+    if (!inputRef) return;
+    const inputLength = inputRef.value.length;
+    const start = Math.max(0, Math.min(range.start, inputLength));
+    const end = Math.max(start, Math.min(range.end, inputLength));
+    requestAnimationFrame(() => {
+      inputRef?.focus();
+      inputRef?.setSelectionRange(start, end);
+    });
+  });
 
   return (
     <div
@@ -133,6 +147,7 @@ export default function PaletteShell(props: {
       <div class="input_wrap">
         <input
           class="input"
+          ref={inputRef}
           autofocus
           placeholder="Type to search..."
           value={inputValue()}

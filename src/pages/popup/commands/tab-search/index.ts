@@ -1,7 +1,11 @@
 import type { Command, PaletteRow } from "@core/command";
 import { CrossRuntimeMessenger } from "@core/cross-runtime-message";
 
-import { matchCommand, setInput } from "~/util/signals";
+import {
+  matchCommand,
+  requestInputSelectionRange,
+  setInput,
+} from "~/util/signals";
 
 import { faviconURL } from "../../Entry";
 import { hotkeyLaunchIntentMessage } from "./hotkey-launch-intent";
@@ -47,31 +51,36 @@ export class TabSearch {
 
   /**
    * popup 起動直後のセッション復元フェーズ。
-   * - 直近 60 秒以内に保存されたキャッシュがあれば、結果と入力欄に流し込む
-   * - background から hotkey 経由で開かれた場合、入力欄を `s>` に切り替える
+   * - background から hotkey 経由で開かれた時だけ復元を試みる
+   * - 直近 60 秒以内のキャッシュがあれば、結果と入力欄に流し込む
+   * - 復元クエリがある場合は `s>` 右側を全選択し、次の検索条件へ即入力できるようにする
    */
   restoreSession(): void {
     this.messenger
       .take(hotkeyLaunchIntentMessage)
       .then((intent) => {
-        if (intent) setInput(`${TAB_SEARCH_KEYWORD}>`);
+        if (!intent) return;
+        // TODO: 可能ならsetInputなんかも抽象化してDIPっぽくしたいが、一旦複雑になりすぎるのを防ぐためそのままにする
+        setInput(`${TAB_SEARCH_KEYWORD}>`);
+        this.cache
+          .loadFresh()
+          .then((restored) => {
+            if (!restored) return;
+            this.runner.primeFromCache(restored.hits, restored.query);
+            const prefix = `${TAB_SEARCH_KEYWORD}>`;
+            const nextInput = `${prefix}${restored.query}`;
+            setInput(nextInput);
+            requestInputSelectionRange(prefix.length, nextInput.length);
+          })
+          .catch((e) => {
+            console.error("Failed to restore tab-search session. Details:", e);
+          });
       })
       .catch((e) => {
         console.error(
           "Failed to take tab-search hotkey launch intent. Details:",
           e
         );
-      });
-
-    this.cache
-      .loadFresh()
-      .then((restored) => {
-        if (!restored) return;
-        this.runner.primeFromCache(restored.hits, restored.query);
-        setInput(`${TAB_SEARCH_KEYWORD}>${restored.query}`);
-      })
-      .catch((e) => {
-        console.error("Failed to restore tab-search session. Details:", e);
       });
   }
 
