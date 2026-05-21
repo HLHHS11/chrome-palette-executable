@@ -20,8 +20,19 @@ const W_HOST = 0.05;
 const BODY_ZERO_PENALTY = 0.5;
 /** 単語境界が両側 / 片側 / なしの場合の品質係数。 */
 const BOUNDARY_FULL = 1.0;
-const BOUNDARY_PARTIAL = 0.7;
-const BOUNDARY_NONE = 0.4;
+const BOUNDARY_PARTIAL = 0.55;
+/** 単語の途中に食い込む部分一致。ヒットは残すが順位は下げる。 */
+const BOUNDARY_NONE = 0.12;
+/**
+ * 単語としての一致 (両側境界) に上乗せするボーナス。
+ * 品質係数だけでは埋め込み一致との差が小さくなりすぎるため、明示的に加点する。
+ */
+const BONUS_WORD_BODY = 0.6;
+const BONUS_WORD_TITLE = 0.45;
+const BONUS_WORD_PATH = 0.25;
+const BONUS_WORD_HOST = 0.15;
+/** 空白で区切られないクエリ (CJK 等) は indexOf ヒットを「語」相当として扱う下限。 */
+const NON_LATIN_TERM_QUALITY_FLOOR = 0.85;
 
 /** スニペットの前後文字数。 */
 const SNIPPET_BEFORE = 40;
@@ -79,6 +90,25 @@ function bestBoundaryQuality(
     if (best === BOUNDARY_FULL) break;
   }
   return best;
+}
+
+/**
+ * フィールド内でのトークン一致の「効く品質」。
+ * 英数字トークンは境界判定をそのまま使い、CJK 等は語境界が曖昧なので
+ * 部分一致でもある程度高く扱う (ユーザーが打った文字列そのものの出現を優先)。
+ */
+function effectiveMatchQuality(
+  text: string,
+  term: string,
+  positions: readonly number[]
+): number {
+  if (positions.length === 0) return 0;
+  const boundary = bestBoundaryQuality(text, term.length, positions);
+  if (boundary >= BOUNDARY_PARTIAL) return boundary;
+  if (!/[a-z0-9]/i.test(term)) {
+    return Math.max(boundary, NON_LATIN_TERM_QUALITY_FLOOR);
+  }
+  return boundary;
 }
 
 /**
@@ -169,6 +199,7 @@ function tokenize(query: string): string[] {
  *
  * - 入力クエリをスペース区切り AND マルチターム解釈
  * - 各タームについて body / title / path / host にヒットしたか + 単語境界品質を見る
+ * - 単語としての一致 (両側境界) にはボーナスを上乗せし、途中一致は大幅に減点
  * - 全タームが何かしらに最低1回ヒットしたタブのみ採用
  * - 本文ヒット0のタブにはペナルティ
  * - スニペットは body の最初のヒット位置から切り出す
@@ -194,36 +225,50 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
       for (const term of tokens) {
         const bodyPositions = findAllPositions(textLower, term);
         const titlePositions = findAllPositions(titleLower, term);
-        const pathHit = pathLower.includes(term);
-        const hostHit = hostLower.includes(term);
+        const pathPositions = findAllPositions(pathLower, term);
+        const hostPositions = findAllPositions(hostLower, term);
 
         if (
           bodyPositions.length === 0 &&
           titlePositions.length === 0 &&
-          !pathHit &&
-          !hostHit
+          pathPositions.length === 0 &&
+          hostPositions.length === 0
         ) {
           allTermsHitSomewhere = false;
           break;
         }
 
-        const bodyQuality = bestBoundaryQuality(
+        const bodyQuality = effectiveMatchQuality(
           textLower,
-          term.length,
+          term,
           bodyPositions
         );
-        const titleQuality = bestBoundaryQuality(
+        const titleQuality = effectiveMatchQuality(
           titleLower,
-          term.length,
+          term,
           titlePositions
+        );
+        const pathQuality = effectiveMatchQuality(
+          pathLower,
+          term,
+          pathPositions
+        );
+        const hostQuality = effectiveMatchQuality(
+          hostLower,
+          term,
+          hostPositions
         );
 
         const termScore =
           W_BODY * bodyQuality +
+          (bodyQuality >= BOUNDARY_FULL ? BONUS_WORD_BODY : 0) +
           W_BODY_FREQ * Math.log(1 + bodyPositions.length) +
           W_TITLE * titleQuality +
-          (pathHit ? W_PATH : 0) +
-          (hostHit ? W_HOST : 0);
+          (titleQuality >= BOUNDARY_FULL ? BONUS_WORD_TITLE : 0) +
+          W_PATH * pathQuality +
+          (pathQuality >= BOUNDARY_FULL ? BONUS_WORD_PATH : 0) +
+          W_HOST * hostQuality +
+          (hostQuality >= BOUNDARY_FULL ? BONUS_WORD_HOST : 0);
 
         totalScore += termScore;
         totalBodyHits += bodyPositions.length;
