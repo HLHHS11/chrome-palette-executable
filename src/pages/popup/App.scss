@@ -20,7 +20,9 @@
   .list {
     margin: 0;
     padding: 0;
-    height: 300px;
+    // 結果が少ないときは伸びず、多いときは max まで伸びてから内部スクロール。
+    // body 側で max-height: 600px を設定しており、それから input 欄分を引いたサイズ。
+    max-height: 535px;
     overflow: auto;
   }
 }

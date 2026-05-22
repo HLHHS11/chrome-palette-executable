@@ -1,7 +1,8 @@
+import type { Command } from "@core/command";
+
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
-import { Command } from "./general";
 
 const KEYWORD = "bt";
 
@@ -17,7 +18,7 @@ const traverse = (
         title: path,
         icon: faviconURL("chrome://favicon/"),
         lastVisitTime: dateAdded,
-        command: async function () {
+        handler: async function () {
           const [tab] = await chrome.tabs.query({
             currentWindow: true,
             active: true,
@@ -42,7 +43,7 @@ const traverse = (
 const base: Command[] = [
   {
     title: "Bookmark this tab",
-    command: async function () {
+    handler: async function () {
       setInput(KEYWORD + ">");
     },
     keyword: KEYWORD + ">",

@@ -1,8 +1,13 @@
+import type { Command } from "@core/command";
+import { createRuntimeRpcClient } from "@core/rpc";
+import { backgroundRoutes } from "@src/pages/background/routes";
+
 import niceUrl from "~/util/nice-url";
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
-import { Command } from "./general";
+
+const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
 const KEYWORD = "t";
 
@@ -14,7 +19,7 @@ const commands = createLazyResource<Command[]>([], async () => {
       title: title || "Untitled",
       subtitle: niceUrl(url),
       icon: faviconURL(url),
-      command: () => {
+      handler: () => {
         chrome.tabs.update(id!, { highlighted: true });
         chrome.windows.update(windowId!, { focused: true });
         window.close();
@@ -26,11 +31,22 @@ const commands = createLazyResource<Command[]>([], async () => {
 const base: Command[] = [
   {
     title: "Search Tabs",
-    command: async function () {
+    handler: async function () {
       setInput(KEYWORD + ">");
     },
     keyword: KEYWORD + ">",
     icon: faviconURL("about:blank"),
+  },
+  {
+    title: "タブに番号を表示",
+    subtitle: "Show Tab Numbers",
+    handler: async () => {
+      await callRuntimeRpc({
+        name: "tabNumbering.show",
+        timeoutMs: 5000,
+      });
+      window.close();
+    },
   },
 ];
 

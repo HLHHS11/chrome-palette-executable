@@ -1,7 +1,8 @@
+import type { Command } from "@core/command";
+
 import { matchCommand, parsedInput, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
-import { Command } from "./general";
 
 type Template = {
   title: string;

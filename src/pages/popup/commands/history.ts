@@ -1,7 +1,8 @@
+import type { Command } from "@pages/core/command";
+
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
-import { Command } from "./general";
 
 const KEYWORD = "h";
 
@@ -52,7 +53,7 @@ const base: Command[] = [
   {
     title: "Search History",
     icon: faviconURL("chrome://history/"),
-    command: async function () {
+    handler: async function () {
       setInput(KEYWORD + ">");
     },
     keyword: KEYWORD + ">",

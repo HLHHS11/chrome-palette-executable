@@ -20,7 +20,10 @@
   },
   "plugins": ["solid", "@typescript-eslint"],
   "rules": {
-    "indent": ["error", 2]
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "destructuredArrayIgnorePattern": "^_" }
+    ]
   },
   "globals": {
     "chrome": "readonly"

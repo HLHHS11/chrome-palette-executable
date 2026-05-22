@@ -6,11 +6,9 @@
     "typescriptreact"
   ],
   "editor.codeActionsOnSave": {
-    "source.organizeImports": "explicit",
     "source.fixAll.eslint": "explicit"
   },
-  "javascript.preferences.quoteStyle": "single",
-  "typescript.preferences.quoteStyle": "single",
-  "prettier.singleQuote": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.prettierPath": "./node_modules/prettier",
   "debug.internalConsoleOptions": "neverOpen"
 }

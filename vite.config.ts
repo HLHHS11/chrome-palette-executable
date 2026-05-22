@@ -8,6 +8,7 @@ import manifest from "./src/manifest";
 
 const root = resolve(__dirname, "src");
 const pagesDir = resolve(root, "pages");
+const coreDir = resolve(pagesDir, "core");
 const popupDir = resolve(pagesDir, "popup");
 const assetsDir = resolve(root, "assets");
 const outDir = resolve(__dirname, "dist");
@@ -27,6 +28,7 @@ export default defineConfig(({ command }) => {
     ],
     resolve: {
       alias: {
+        "@core": coreDir,
         "@src": root,
         "@assets": assetsDir,
         "@pages": pagesDir,

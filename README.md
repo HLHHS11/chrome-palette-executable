@@ -115,3 +115,10 @@ Import the `dist` folder as an unpacked extension in chrome. This folder is rebu
 # Previous art
 
 - Commander: https://github.com/ssundarraj/commander
+
+---
+
+# chrome-palette-executable の変更点
+
+※Cmd Shift P のショートカットは、Chromeの開発者ツール内のコマンドパレットのデフォルトキーバインド (Cmd + Shift + P) と完全に競合してしまう。
+そのため、開発者ツールの `Run Command` 側のショートカットを `Cmd + Option + Shift + P` 等に変更するのを推奨する。

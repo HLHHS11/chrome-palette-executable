@@ -1,14 +1,13 @@
 // render inside top level Solid component
 import "./Entry.scss";
 
-import { Show, createEffect, createMemo } from "solid-js";
+import type { Command } from "@core/command";
+import type { HighlightRanges } from "@core/search";
+import { JSX, Show, createEffect } from "solid-js";
 import twas from "twas";
 
-import { runCommand } from "./App";
 import Keyword from "./Keyword";
 import Shortcut from "./Shortcut";
-import { Command } from "./commands/general";
-import { parsedInput } from "./util/signals";
 
 export function faviconURL(u?: string) {
   if (!u) return u;
@@ -18,41 +17,60 @@ export function faviconURL(u?: string) {
   return url.toString();
 }
 
+/**
+ * `text` の中で `ranges` が指す箇所を `<b>` で囲んだ JSX を返す。
+ *
+ * - レンジは半開区間 `[start, endExclusive)`。
+ * - 範囲外 / 不正なレンジは無視。
+ * - `ranges` が空または undefined のときは生のテキストを返す。
+ *
+ * Entry の各テキスト行 (title / subtitle / url / snippet) の描画専用の補助関数。
+ * 検索エンジン (fuzzysort / tab-content-searcher 等) が出力する HighlightRanges に
+ * 対する純粋な見た目の責務を Entry が持っているため、ここに同居させる。
+ */
+function renderWithHighlights(
+  text: string,
+  ranges: HighlightRanges | undefined
+): JSX.Element {
+  if (!ranges || ranges.length === 0) return text;
+
+  const sorted = [...ranges]
+    .filter(([s, e]) => Number.isFinite(s) && Number.isFinite(e) && e > s)
+    .sort((a, b) => a[0] - b[0]);
+  if (sorted.length === 0) return text;
+
+  const out: JSX.Element[] = [];
+  let cursor = 0;
+  for (const [start, end] of sorted) {
+    const s = Math.max(start, cursor);
+    const e = Math.min(end, text.length);
+    if (s >= e) continue;
+    if (s > cursor) out.push(text.slice(cursor, s));
+    out.push(<b>{text.slice(s, e)}</b>);
+    cursor = e;
+  }
+  if (cursor < text.length) out.push(text.slice(cursor));
+  return out;
+}
+
 export default function Entry(props: {
   isSelected: boolean;
+  isExpanded: boolean;
   command: Command;
-  keyResults: Fuzzysort.KeysResult<Command>;
+  /** クリック時のアクション。runCommand 等を親 (PaletteShell) から注入する。 */
+  onSelect: (command: Command) => void;
 }) {
-  const title = createMemo(() => {
-    const txt = props.command.title || "";
-    if (!parsedInput().query) return txt;
-    const r = props.keyResults[0].highlight((t) => <b>{t}</b>);
-    if (r.length === 0) return txt;
-    return r;
-  });
-  const subtitle = createMemo(() => {
-    const txt = props.command.subtitle || "";
-    if (!parsedInput().query) return txt;
-    const r = props.keyResults[1].highlight((t) => <b>{t}</b>);
-    if (r.length === 0) return txt;
-    return r;
-  });
-  const url = createMemo(() => {
-    if (!("url" in props.command)) return "";
-    const txt = props.command.url;
-    if (!parsedInput().query) return txt;
-    const r = props.keyResults[2].highlight((t) => <b>{t}</b>);
-    if (r.length === 0) return txt;
-    return r;
-  });
+  const url = () => ("url" in props.command ? props.command.url || "" : "");
+  const snippet = () => props.command.highlights?.snippet;
+
   return (
     <li
       class="Entry"
       classList={{
         selected: props.isSelected,
       }}
-      onclick={() => {
-        runCommand(props.command);
+      onClick={() => {
+        props.onSelect(props.command);
       }}
       ref={(el) => {
         createEffect(() => {
@@ -67,7 +85,7 @@ export default function Entry(props: {
           <img
             classList={{
               img: true,
-              img_big: !!(subtitle() || url()),
+              img_big: !!(props.command.subtitle || url() || snippet()),
             }}
             src={icon()}
             alt=""
@@ -78,23 +96,37 @@ export default function Entry(props: {
 
       <div class="text">
         <div class="title">
-          <Show when={parsedInput().query} fallback={props.command.title}>
-            {title()}
-          </Show>
+          {renderWithHighlights(
+            props.command.title || "",
+            props.command.highlights?.title
+          )}
         </div>
-        <div class="subtitle">
-          <Show when={parsedInput().query} fallback={props.command.subtitle}>
-            {subtitle()}
-          </Show>
-        </div>
-        <div class="subtitle">
-          <Show when={parsedInput().query} fallback={props.command.url}>
-            {url()}
-          </Show>
-          <Show when={props.command.lastVisitTime}>
-            {(time) => <span class="time_ago">{twas(time())}</span>}
-          </Show>
-        </div>
+        <Show when={props.command.subtitle}>
+          <div class="subtitle">
+            {renderWithHighlights(
+              props.command.subtitle || "",
+              props.command.highlights?.subtitle
+            )}
+          </div>
+        </Show>
+        <Show when={url() || props.command.lastVisitTime}>
+          <div class="subtitle">
+            {renderWithHighlights(url(), props.command.highlights?.url)}
+            <Show when={props.command.lastVisitTime}>
+              {(time) => <span class="time_ago">{twas(time())}</span>}
+            </Show>
+          </div>
+        </Show>
+        <Show when={snippet()}>
+          {(s) => (
+            <div
+              class="snippet"
+              classList={{ snippet_expanded: props.isExpanded }}
+            >
+              {renderWithHighlights(s().text, s().ranges)}
+            </div>
+          )}
+        </Show>
       </div>
       <Shortcut keys={props.command.shortcut} />
       <Keyword keyword={props.command.keyword} />

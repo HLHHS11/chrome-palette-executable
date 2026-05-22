@@ -1,7 +1,8 @@
+import type { Command } from "@pages/core/command";
+
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
-import { Command } from "./general";
 
 const KEYWORD = "b";
 
@@ -34,7 +35,7 @@ const commands = createLazyResource([], async () => {
 const base: Command[] = [
   {
     title: "Search Bookmarks",
-    command: async function () {
+    handler: async function () {
       setInput(KEYWORD + ">");
     },
     icon: faviconURL("chrome://bookmarks/"),

@@ -29,6 +29,10 @@ li.Entry {
   .text {
     flex-grow: 1;
     flex-basis: calc(100% - 200px);
+    // flex item は既定で min-width: auto (= 内容サイズ) なので、
+    // .subtitle に白spc: nowrap が乗っていると長い URL が flex item を押し広げ、
+    // popup 全体に横スクロールが発生する。0 にして縮めるのを許可。
+    min-width: 0;
     padding: 10px 0;
     b {
       color: var(--entry-matched-text);
@@ -36,8 +40,13 @@ li.Entry {
     }
     .subtitle {
       opacity: 0.8;
+      overflow: hidden;
       font-weight: 300;
       font-size: 12px;
+      text-overflow: ellipsis;
+      // 長い URL を 1 行に省略する。 host+path や履歴 URL は ID で膨らみがちで、
+      // 全部見せる必要はない。
+      white-space: nowrap;
       .time_ago {
         float: right;
         margin-top: 5px;
@@ -45,6 +54,28 @@ li.Entry {
         font-style: italic;
         font-size: 10px;
         white-space: nowrap;
+      }
+    }
+    // スニペット行。
+    // 既定では .text 全体に効いている word-break: break-all を上書きし、
+    // 単語の途中で改行されにくいルールに差し替える。
+    // 既定は 2 行クランプ、選択中行で Space 押下時に snippet_expanded が付き、解除。
+    .snippet {
+      display: -webkit-box;
+      opacity: 0.85;
+      margin-top: 4px;
+      font-weight: 300;
+      font-size: 12px;
+      line-height: 1.45;
+      word-break: normal;
+      overflow-wrap: anywhere;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      &.snippet_expanded {
+        -webkit-line-clamp: unset;
+        display: block;
+        overflow: visible;
       }
     }
   }

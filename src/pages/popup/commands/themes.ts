@@ -1,8 +1,7 @@
+import type { Command } from "@pages/core/command";
 import { createEffect, createMemo, createSignal } from "solid-js";
 
 import { createStoredSignal, matchCommand, setInput } from "~/util/signals";
-
-import { Command } from "./general";
 
 const KEYWORD = "theme";
 
@@ -45,7 +44,7 @@ const commands = (): Command[] =>
 const base: Command[] = [
   {
     title: "Chrome Palette Themes",
-    command: async function () {
+    handler: async function () {
       setInput(KEYWORD + ">");
     },
     keyword: KEYWORD + ">",

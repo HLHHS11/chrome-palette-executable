@@ -19,7 +19,9 @@
     "start": "vite build --watch --mode development --minify false",
     "start:prod": "vite build --watch",
     "build": "vite build && rm chrome-palette.zip && zip -r9 chrome-palette.zip dist/",
-    "lint": "eslint . --fix -c .eslintrc --ext js,ts --ignore-pattern='!.*'",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix -c .eslintrc --ext js,ts,jsx,tsx --ignore-pattern='!.*'",
+    "format": "prettier . --write",
     "dev:nodemon": "nodemon",
     "analyse-bundle": "npx vite-bundle-visualizer",
     "upgrade-deps": "npx npm-upgrade",
@@ -30,6 +32,7 @@
     "fuzzysort": "^3.0.0",
     "solid-infinite-scroll": "^1.0.1",
     "solid-js": "^1.7.11",
+    "text-fragments-polyfill": "^6.7.0",
     "tinykeys": "^2.1.0",
     "twas": "^2.1.3"
   },
