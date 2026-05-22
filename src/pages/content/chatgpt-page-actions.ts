@@ -95,7 +95,7 @@ export async function selectChatGptModel(
       typeof buttons !== "undefined"
         ? ([...buttons].find((button) => {
             const text = button.textContent?.trim();
-            return text === "Instant" || text === "思考" || text === "拡張";
+            return text === "Instant" || text === "Thinking" || text === "拡張";
           }) ?? null)
         : null;
     if (selectModelButton) {
