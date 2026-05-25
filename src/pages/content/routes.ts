@@ -8,7 +8,7 @@ import {
   stopChatGptGeneration,
   toggleChatGptSidebar,
 } from "./chatgpt-page-actions";
-import { selectClaudeModel } from "./claude-page-actions";
+import { selectClaudeModel, stopClaudeGeneration } from "./claude-page-actions";
 import {
   openGeminiFileAttach,
   selectGeminiModel,
@@ -39,6 +39,7 @@ export const routes = [
   { name: "rovo.stopGeneration", handler: stopRovoGeneration },
   { name: "rovo.selectModel", handler: selectRovoModel },
   { name: "claude.selectModel", handler: selectClaudeModel },
+  { name: "claude.stopGeneration", handler: stopClaudeGeneration },
   { name: "gmail.archive", handler: startGmailArchiveMode },
   { name: "googleDocs.exportAsMarkdown", handler: exportGoogleDocsAsMarkdown },
   {

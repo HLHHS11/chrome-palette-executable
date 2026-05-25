@@ -46,5 +46,18 @@ export function getClaudeRpcCommands(
         mode: "thinking",
       },
     },
+    {
+      title: "Claude: 回答生成を停止",
+      subtitle: "Claude: Stop Generation",
+      message: { name: "claude.stopGeneration" },
+      keybind: [
+        {
+          metaKey: true,
+          shiftKey: true,
+          key: "Backspace",
+          preventDefault: true,
+        },
+      ],
+    },
   ];
 }

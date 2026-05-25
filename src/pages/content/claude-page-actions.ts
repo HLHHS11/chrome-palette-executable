@@ -1,6 +1,7 @@
 import { RpcResponse, RpcVoidResponseBody } from "@core/rpc";
 
 import {
+  simulateMouseClick,
   simulateMouseClickSequence,
   waitForSelector,
   waitUntilValue,
@@ -214,5 +215,16 @@ export async function selectClaudeModel(
   }
 
   dispatchEscape();
+  return { ok: true, data: {} };
+}
+
+export function stopClaudeGeneration(): RpcResponse<RpcVoidResponseBody> {
+  const stopButton = document.querySelector<HTMLElement>(
+    'button[aria-label="応答を停止"]'
+  );
+  if (!stopButton) {
+    return { ok: false, error: "回答生成停止ボタンが見つかりません。" };
+  }
+  simulateMouseClick(stopButton);
   return { ok: true, data: {} };
 }
