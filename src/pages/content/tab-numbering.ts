@@ -37,7 +37,7 @@ export function restoreTabNumberingTitle(): RpcResponse<RpcVoidResponseBody> {
 // Cmd (Meta) 長押し検出 → background に show/hide を依頼するエントリポイント。
 //
 // 仕様:
-// - Meta keydown から 200ms 経過しても押下継続中なら長押し成立として `tabNumbering.show` を呼ぶ。
+// - Meta keydown から 50ms 経過しても押下継続中なら長押し成立として `tabNumbering.show` を呼ぶ。
 // - 長押し成立前に「Meta 以外のキーが押される」または「Meta が keyup される」とキャンセル。
 //   これにより Cmd+他キー の通常ショートカット (Cmd+T 等) には干渉しない。
 // - 長押し成立後に Meta keyup されたら `tabNumbering.hide` を呼ぶ。
@@ -47,7 +47,7 @@ export function restoreTabNumberingTitle(): RpcResponse<RpcVoidResponseBody> {
 
 const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
-const LONG_PRESS_THRESHOLD_MS = 200;
+const LONG_PRESS_THRESHOLD_MS = 50;
 
 export function initTabNumberingHints(): void {
   let pressTimerId: number | null = null;
