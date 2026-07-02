@@ -9,6 +9,10 @@ import twas from "twas";
 import Keyword from "./Keyword";
 import Shortcut from "./Shortcut";
 
+/**
+ * @deprecated Entry の表示責務に紐づいた場所にあるため、新規コードでは使わない。
+ * 新しい popup use case では `popup/util/favicon` を参照する。
+ */
 export function faviconURL(u?: string) {
   if (!u) return u;
   const url = new URL(chrome.runtime.getURL("/_favicon/"));

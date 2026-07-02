@@ -3,6 +3,7 @@ import {
   type RpcCommand,
   runRpcCommandInPopup,
 } from "@core/command";
+import { CrossRuntimeMessenger } from "@core/cross-runtime-message";
 import { PaletteSearcher } from "@core/palette-search";
 import { type ExtractRpcRequest, createTabsRpcClient } from "@core/rpc";
 import type { routes } from "@pages/content/routes";
@@ -11,6 +12,8 @@ import {
   createMemo,
   createResource,
   createSignal,
+  onCleanup,
+  onMount,
 } from "solid-js";
 
 import { listAllCommands } from "../command";
@@ -21,6 +24,14 @@ import {
   type TabSnapshot,
   collectTabSnapshots,
 } from "./commands/tab-search";
+import {
+  VERTICAL_TABS_KEYWORD,
+  type VerticalTabItem,
+  VerticalTabsView,
+  collectVerticalTabs,
+  verticalTabsCloseIntentMessage,
+  verticalTabsLaunchIntentMessage,
+} from "./commands/vertical-tabs";
 import { rankingService } from "./util/ranking";
 import {
   createLazyResource,
@@ -69,6 +80,31 @@ const allCommands = createMemo(() => {
 const commandsLimit = 75;
 
 const [scrollIndex, setScrollIndex] = createSignal(commandsLimit);
+const verticalTabsSearchParams = new URLSearchParams(location.search);
+const verticalTabsRequestId = verticalTabsSearchParams.get("requestId");
+const verticalTabsWindowId = (() => {
+  const raw = verticalTabsSearchParams.get("windowId");
+  if (raw === null) return undefined;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+})();
+const [isEphemeralVerticalTabsActive, setEphemeralVerticalTabsActive] =
+  createSignal(verticalTabsSearchParams.get("surface") === "vertical-tabs");
+const [isLaunchIntentChecked, setLaunchIntentChecked] = createSignal(
+  isEphemeralVerticalTabsActive()
+);
+const META_TAP_MAX_MS = 300;
+const META_DOUBLE_TAP_WINDOW_MS = 450;
+const isVerticalTabsMode = createMemo(
+  () =>
+    isEphemeralVerticalTabsActive() ||
+    parsedInput().keyword === VERTICAL_TABS_KEYWORD
+);
+const [verticalTabs] = createResource(isVerticalTabsMode, (isActive) =>
+  isActive
+    ? collectVerticalTabs({ windowId: verticalTabsWindowId })
+    : Promise.resolve([])
+);
 
 // TODO: #2 FIX
 // 本来 "全タブ検索の結果" は Command ではなく、専用の結果型を持って独自の描画パスを
@@ -115,6 +151,96 @@ const runCommand = async (command: Command) => {
 };
 
 const App = () => {
+  onMount(() => {
+    const messenger = new CrossRuntimeMessenger();
+    if (!isEphemeralVerticalTabsActive()) {
+      chrome.storage.session
+        .get(verticalTabsLaunchIntentMessage.key)
+        .then(async (intent) => {
+          setLaunchIntentChecked(true);
+          const payload = intent[verticalTabsLaunchIntentMessage.key];
+          await chrome.storage.session.remove(
+            verticalTabsLaunchIntentMessage.key
+          );
+          if (payload?.source !== "ephemeral") return;
+          setEphemeralVerticalTabsActive(true);
+          const closeIntent = await messenger.take(
+            verticalTabsCloseIntentMessage
+          );
+          if (closeIntent?.source === "ephemeral") window.close();
+        })
+        .catch(() => {
+          setLaunchIntentChecked(true);
+        });
+    }
+
+    const onStorageChanged = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName !== "session") return;
+      if (!(verticalTabsCloseIntentMessage.key in changes)) return;
+      const closeIntent = changes[verticalTabsCloseIntentMessage.key].newValue;
+      if (!isEphemeralVerticalTabsActive()) return;
+      if (
+        verticalTabsRequestId !== null &&
+        closeIntent?.requestId !== verticalTabsRequestId
+      ) {
+        return;
+      }
+      window.close();
+    };
+    chrome.storage.onChanged.addListener(onStorageChanged);
+
+    let isMetaTapCandidate = false;
+    let metaTapStartedAt = 0;
+    let lastMetaTapAt = 0;
+    const isMetaKeyEvent = (e: KeyboardEvent): boolean =>
+      e.code === "MetaLeft" || e.code === "MetaRight";
+
+    const onKeyup = (e: KeyboardEvent) => {
+      const now = Date.now();
+      const tapDurationMs = now - metaTapStartedAt;
+      const isShortMetaTap =
+        isMetaTapCandidate && tapDurationMs <= META_TAP_MAX_MS;
+      if (!isMetaKeyEvent(e)) return;
+      if (!isEphemeralVerticalTabsActive()) return;
+      if (!isShortMetaTap) {
+        isMetaTapCandidate = false;
+        lastMetaTapAt = 0;
+        return;
+      }
+      isMetaTapCandidate = false;
+      if (
+        lastMetaTapAt !== 0 &&
+        now - lastMetaTapAt <= META_DOUBLE_TAP_WINDOW_MS
+      ) {
+        window.close();
+        return;
+      }
+      lastMetaTapAt = now;
+    };
+    const onKeydown = (e: KeyboardEvent) => {
+      if (!isEphemeralVerticalTabsActive()) return;
+      if (e.repeat) return;
+      if (!isMetaKeyEvent(e)) {
+        isMetaTapCandidate = false;
+        lastMetaTapAt = 0;
+        return;
+      }
+      isMetaTapCandidate = true;
+      metaTapStartedAt = Date.now();
+    };
+    window.addEventListener("keydown", onKeydown, true);
+    window.addEventListener("keyup", onKeyup, true);
+
+    onCleanup(() => {
+      chrome.storage.onChanged.removeListener(onStorageChanged);
+      window.removeEventListener("keydown", onKeydown, true);
+      window.removeEventListener("keyup", onKeyup, true);
+    });
+  });
+
   // 入力が変化したら次回表示のページサイズを初期値に戻す。
   // scrollIndex は「fuzzysort が返す件数の上限」を兼ねているので、
   // クエリが変わった瞬間に下位ページの状態を持ち越さないようリセットする。
@@ -122,13 +248,30 @@ const App = () => {
     inputValue();
     setScrollIndex(commandsLimit);
   });
+
+  const selectVerticalTab = async (item: VerticalTabItem) => {
+    await chrome.tabs.update(item.tabId, { active: true });
+    await chrome.windows.update(item.windowId, { focused: true });
+    window.close();
+  };
+
   return (
-    <PaletteShell
-      shortcut={shortcut}
-      commands={filteredCommands}
-      onSelect={runCommand}
-      onLoadMore={() => setScrollIndex(scrollIndex() * 2)}
-    />
+    <>
+      {isVerticalTabsMode() ? (
+        <VerticalTabsView
+          items={() => verticalTabs() ?? []}
+          onSelect={selectVerticalTab}
+        />
+      ) : (
+        <PaletteShell
+          shortcut={shortcut}
+          commands={filteredCommands}
+          onSelect={runCommand}
+          onLoadMore={() => setScrollIndex(scrollIndex() * 2)}
+          closeOnBlur={isLaunchIntentChecked()}
+        />
+      )}
+    </>
   );
 };
 

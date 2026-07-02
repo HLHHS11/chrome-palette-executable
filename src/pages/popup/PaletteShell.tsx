@@ -113,6 +113,8 @@ export default function PaletteShell(props: {
   onSelect: (command: Command) => void;
   /** リスト末端到達時にもっと読み込む通知。 */
   onLoadMore: () => void;
+  /** popup 起動直後の launch intent 確認前だけ blur close を止める。 */
+  closeOnBlur?: boolean;
 }) {
   // TODO: #2 ↓以下、山口は全く理解してない
   // props.* を直接渡すと Solid lint が "tracked scope の外で reactive を参照" と警告する。
@@ -141,7 +143,7 @@ export default function PaletteShell(props: {
     <div
       class="App"
       onBlur={() => {
-        window.close();
+        if (props.closeOnBlur !== false) window.close();
       }}
     >
       <div class="input_wrap">

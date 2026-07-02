@@ -1,0 +1,75 @@
+.VerticalTabs {
+  .vertical_tabs_list {
+    margin: 0;
+    padding: 4px 0;
+    max-height: 596px;
+    overflow: auto;
+  }
+}
+
+li.VerticalTabEntry {
+  display: grid;
+  grid-template-columns: 28px 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 16px;
+  min-height: 34px;
+  color: var(--text-color);
+
+  &.selected {
+    outline: 1px solid var(--entry-selected-border-color);
+    background-color: var(--entry-selected-background-color);
+    color: var(--entry-selected-text-color);
+  }
+
+  &:not(.selected):hover {
+    background-color: var(--entry-hover-background-color);
+  }
+
+  @for $i from 0 through 9 {
+    &.duplicate_#{$i} {
+      background-color: var(--vertical-tab-duplicate-#{$i});
+    }
+
+    &.duplicate_#{$i}:hover,
+    &.duplicate_#{$i}.selected {
+      background-color: var(--vertical-tab-duplicate-#{$i}-active);
+    }
+  }
+
+  .vertical_tab_icon {
+    justify-self: center;
+    width: 16px;
+    height: 16px;
+  }
+
+  .vertical_tab_number {
+    opacity: 0.72;
+    font-size: 12px;
+    text-align: right;
+  }
+
+  .vertical_tab_text {
+    min-width: 0;
+  }
+
+  .vertical_tab_title,
+  .vertical_tab_url {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .vertical_tab_title {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .vertical_tab_url {
+    opacity: 0.72;
+    margin-top: 1px;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+}

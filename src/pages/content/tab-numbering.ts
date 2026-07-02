@@ -48,10 +48,15 @@ export function restoreTabNumberingTitle(): RpcResponse<RpcVoidResponseBody> {
 const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
 const LONG_PRESS_THRESHOLD_MS = 50;
+const META_TAP_MAX_MS = 300;
+const META_DOUBLE_TAP_WINDOW_MS = 450;
 
 export function initTabNumberingHints(): void {
   let pressTimerId: number | null = null;
   let isHintActive = false;
+  let isMetaTapCandidate = false;
+  let metaTapStartedAt = 0;
+  let lastMetaTapAt = 0;
 
   const cancelPressTimer = (): void => {
     if (pressTimerId !== null) {
@@ -68,31 +73,64 @@ export function initTabNumberingHints(): void {
 
     if (!isMetaKeyEvent(e)) {
       if (pressTimerId !== null) cancelPressTimer();
+      isMetaTapCandidate = false;
+      lastMetaTapAt = 0;
       return;
     }
 
     if (isHintActive || pressTimerId !== null) return;
+    isMetaTapCandidate = true;
+    metaTapStartedAt = Date.now();
     pressTimerId = window.setTimeout(() => {
       pressTimerId = null;
       isHintActive = true;
-      void callRuntimeRpc({ name: "tabNumbering.show" });
+      void callRuntimeRpc({ name: "tabNumbering.show" })
+        .then(() => undefined)
+        .catch(() => undefined);
     }, LONG_PRESS_THRESHOLD_MS);
   });
 
   window.addEventListener("keyup", (e) => {
     if (!isMetaKeyEvent(e)) return;
+    const now = Date.now();
+    const tapDurationMs = now - metaTapStartedAt;
+    const isShortMetaTap =
+      isMetaTapCandidate && tapDurationMs <= META_TAP_MAX_MS;
     cancelPressTimer();
     if (isHintActive) {
       isHintActive = false;
-      void callRuntimeRpc({ name: "tabNumbering.hide" });
+      void callRuntimeRpc({ name: "tabNumbering.hide" })
+        .then(() => undefined)
+        .catch(() => undefined);
     }
+    if (!isShortMetaTap) {
+      isMetaTapCandidate = false;
+      lastMetaTapAt = 0;
+      return;
+    }
+
+    isMetaTapCandidate = false;
+    if (
+      lastMetaTapAt !== 0 &&
+      now - lastMetaTapAt <= META_DOUBLE_TAP_WINDOW_MS
+    ) {
+      lastMetaTapAt = 0;
+      void callRuntimeRpc({ name: "verticalTabs.showEphemeral" })
+        .then(() => undefined)
+        .catch(() => undefined);
+      return;
+    }
+    lastMetaTapAt = now;
   });
 
   window.addEventListener("blur", () => {
     cancelPressTimer();
+    isMetaTapCandidate = false;
     if (isHintActive) {
       isHintActive = false;
-      void callRuntimeRpc({ name: "tabNumbering.hide" });
+      void callRuntimeRpc({ name: "tabNumbering.hide" })
+        .then(() => undefined)
+        .catch(() => undefined);
     }
   });
 }

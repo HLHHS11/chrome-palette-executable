@@ -11,6 +11,7 @@ import switchTabSuggestions from "./popup/commands/tabs";
 import themeSuggestions from "./popup/commands/themes";
 import utilsCopyTabLinkSuggestions from "./popup/commands/utils-copy-tab-link";
 import utilsNotificationSuggestions from "./popup/commands/utils-notification";
+import verticalTabsSuggestions from "./popup/commands/vertical-tabs";
 import websitesSuggestions from "./popup/commands/website-search";
 import youtubeSuggestions from "./popup/commands/youtube";
 import { listRpcCommands } from "./rpc-command";
@@ -24,6 +25,7 @@ export function listLegacyCommands(pageUrl: URL | undefined): LegacyCommand[] {
     ...audibleTabSuggestions(),
     ...bookmarkThisSuggestions(),
     ...switchTabSuggestions(),
+    ...verticalTabsSuggestions(),
     ...tabSearchSuggestions(),
     ...historySuggestions(),
     ...bookmarkSuggestions(),
