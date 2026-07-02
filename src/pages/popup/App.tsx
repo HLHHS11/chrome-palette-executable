@@ -3,7 +3,6 @@ import {
   type RpcCommand,
   runRpcCommandInPopup,
 } from "@core/command";
-import { CrossRuntimeMessenger } from "@core/cross-runtime-message";
 import { PaletteSearcher } from "@core/palette-search";
 import { type ExtractRpcRequest, createTabsRpcClient } from "@core/rpc";
 import type { routes } from "@pages/content/routes";
@@ -30,7 +29,6 @@ import {
   VerticalTabsView,
   collectVerticalTabs,
   verticalTabsCloseIntentMessage,
-  verticalTabsLaunchIntentMessage,
 } from "./commands/vertical-tabs";
 import { rankingService } from "./util/ranking";
 import {
@@ -88,16 +86,13 @@ const verticalTabsWindowId = (() => {
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : undefined;
 })();
-const [isEphemeralVerticalTabsActive, setEphemeralVerticalTabsActive] =
-  createSignal(verticalTabsSearchParams.get("surface") === "vertical-tabs");
-const [isLaunchIntentChecked, setLaunchIntentChecked] = createSignal(
-  isEphemeralVerticalTabsActive()
-);
+const isEphemeralVerticalTabsActive =
+  verticalTabsSearchParams.get("surface") === "vertical-tabs";
 const META_TAP_MAX_MS = 300;
 const META_DOUBLE_TAP_WINDOW_MS = 450;
 const isVerticalTabsMode = createMemo(
   () =>
-    isEphemeralVerticalTabsActive() ||
+    isEphemeralVerticalTabsActive ||
     parsedInput().keyword === VERTICAL_TABS_KEYWORD
 );
 const [verticalTabs] = createResource(isVerticalTabsMode, (isActive) =>
@@ -152,28 +147,6 @@ const runCommand = async (command: Command) => {
 
 const App = () => {
   onMount(() => {
-    const messenger = new CrossRuntimeMessenger();
-    if (!isEphemeralVerticalTabsActive()) {
-      chrome.storage.session
-        .get(verticalTabsLaunchIntentMessage.key)
-        .then(async (intent) => {
-          setLaunchIntentChecked(true);
-          const payload = intent[verticalTabsLaunchIntentMessage.key];
-          await chrome.storage.session.remove(
-            verticalTabsLaunchIntentMessage.key
-          );
-          if (payload?.source !== "ephemeral") return;
-          setEphemeralVerticalTabsActive(true);
-          const closeIntent = await messenger.take(
-            verticalTabsCloseIntentMessage
-          );
-          if (closeIntent?.source === "ephemeral") window.close();
-        })
-        .catch(() => {
-          setLaunchIntentChecked(true);
-        });
-    }
-
     const onStorageChanged = (
       changes: { [key: string]: chrome.storage.StorageChange },
       areaName: string
@@ -181,7 +154,7 @@ const App = () => {
       if (areaName !== "session") return;
       if (!(verticalTabsCloseIntentMessage.key in changes)) return;
       const closeIntent = changes[verticalTabsCloseIntentMessage.key].newValue;
-      if (!isEphemeralVerticalTabsActive()) return;
+      if (!isEphemeralVerticalTabsActive) return;
       if (
         verticalTabsRequestId !== null &&
         closeIntent?.requestId !== verticalTabsRequestId
@@ -204,7 +177,7 @@ const App = () => {
       const isShortMetaTap =
         isMetaTapCandidate && tapDurationMs <= META_TAP_MAX_MS;
       if (!isMetaKeyEvent(e)) return;
-      if (!isEphemeralVerticalTabsActive()) return;
+      if (!isEphemeralVerticalTabsActive) return;
       if (!isShortMetaTap) {
         isMetaTapCandidate = false;
         lastMetaTapAt = 0;
@@ -221,7 +194,7 @@ const App = () => {
       lastMetaTapAt = now;
     };
     const onKeydown = (e: KeyboardEvent) => {
-      if (!isEphemeralVerticalTabsActive()) return;
+      if (!isEphemeralVerticalTabsActive) return;
       if (e.repeat) return;
       if (!isMetaKeyEvent(e)) {
         isMetaTapCandidate = false;
@@ -268,7 +241,6 @@ const App = () => {
           commands={filteredCommands}
           onSelect={runCommand}
           onLoadMore={() => setScrollIndex(scrollIndex() * 2)}
-          closeOnBlur={isLaunchIntentChecked()}
         />
       )}
     </>
