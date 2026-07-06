@@ -168,8 +168,9 @@ const App = () => {
     let isMetaTapCandidate = false;
     let metaTapStartedAt = 0;
     let lastMetaTapAt = 0;
-    const isMetaKeyEvent = (e: KeyboardEvent): boolean =>
-      e.code === "MetaLeft" || e.code === "MetaRight";
+    // 擬似縦タブは左 Cmd のダブルタップで開く/閉じるため、ここも左 Cmd 限定に揃える。
+    // 右 Cmd の keydown/keyup は下の `!isMetaKeyEvent` 分岐でリセット扱いになる。
+    const isMetaKeyEvent = (e: KeyboardEvent): boolean => e.code === "MetaLeft";
 
     const onKeyup = (e: KeyboardEvent) => {
       const now = Date.now();

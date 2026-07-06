@@ -67,6 +67,9 @@ export function initTabNumberingHints(): void {
 
   const isMetaKeyEvent = (e: KeyboardEvent): boolean =>
     e.code === "MetaLeft" || e.code === "MetaRight";
+  // 擬似縦タブ (ダブルタップ) は左 Cmd 限定。右 Cmd には別バインドを割り当てられるため。
+  const isLeftMetaKeyEvent = (e: KeyboardEvent): boolean =>
+    e.code === "MetaLeft";
 
   window.addEventListener("keydown", (e) => {
     if (e.repeat) return;
@@ -103,7 +106,9 @@ export function initTabNumberingHints(): void {
         .then(() => undefined)
         .catch(() => undefined);
     }
-    if (!isShortMetaTap) {
+    // 長押しヒント (tab numbering) は左右どちらの Cmd でも動くが、
+    // ダブルタップでの擬似縦タブ表示は左 Cmd 限定にする。
+    if (!isShortMetaTap || !isLeftMetaKeyEvent(e)) {
       isMetaTapCandidate = false;
       lastMetaTapAt = 0;
       return;
