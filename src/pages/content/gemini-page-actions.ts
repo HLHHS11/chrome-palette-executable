@@ -21,7 +21,8 @@ const GEMINI_MODEL_TIER_XPATH: Record<SelectGeminiModelParams["tier"], string> =
     pro: "//span[contains(., ' Pro')]",
   };
 
-const THINKING_LEVEL_ROW_XPATH = "//span[contains(., '思考レベル')]";
+const ENHANCED_THINKING_MODE_ROW_XPATH =
+  "//*[@data-test-id='gem-mode-menu']//gem-menu-item[.//span[normalize-space(.)='強化版思考モード']]";
 const GEMINI_MODEL_MENU_BUTTON = 'button[data-test-id="bard-mode-menu-button"]';
 
 function openGeminiModelMenu(): RpcResponse<RpcVoidResponseBody> | undefined {
@@ -58,28 +59,36 @@ export async function selectGeminiModel(
   const stop2 = openGeminiModelMenu();
   if (stop2) return stop2;
 
-  let thinkingLevelEl: Element;
+  let thinkingModeEl: Element;
   try {
-    thinkingLevelEl = await waitForXPath(THINKING_LEVEL_ROW_XPATH, {
+    thinkingModeEl = await waitForXPath(ENHANCED_THINKING_MODE_ROW_XPATH, {
       timeoutMs: 3000,
     });
   } catch {
-    return { ok: false, error: "思考レベルの項目が見つかりません。" };
-  }
-  simulateMouseClick(thinkingLevelEl);
-
-  const effortLabel = params.mode === "instant" ? "標準" : "拡張";
-  const effortXpath = `//span[normalize-space(.)="${effortLabel}"]`;
-  let effortEl: Element;
-  try {
-    effortEl = await waitForXPath(effortXpath, { timeoutMs: 3000 });
-  } catch {
     return {
       ok: false,
-      error: `「${effortLabel}」の項目が見つかりません。`,
+      error: "強化版思考モードの項目が見つかりません。",
     };
   }
-  simulateMouseClick(effortEl);
+
+  const thinkingModeContent = thinkingModeEl.querySelector(
+    ":scope > gem-menu-item-content"
+  );
+  if (!thinkingModeContent) {
+    return {
+      ok: false,
+      error: "強化版思考モードの選択状態が確認できません。",
+    };
+  }
+  const thinkingModeSelected =
+    thinkingModeContent.classList.contains("selected");
+  const wantThinking = params.mode === "thinking";
+  if (thinkingModeSelected !== wantThinking) {
+    simulateMouseClick(thinkingModeEl);
+  } else {
+    const closeStop = openGeminiModelMenu();
+    if (closeStop) return closeStop;
+  }
 
   return { ok: true, data: {} };
 }

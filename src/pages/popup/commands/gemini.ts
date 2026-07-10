@@ -96,8 +96,8 @@ export function getGeminiRpcCommands(
       message: { name: "gemini.openFileAttach" },
     },
     ...GEMINI_MODEL_COMMANDS.map((row) => ({
-      title: `Gemini: ${row.tierLabelJa}（${row.modeLabelJa}）`,
-      subtitle: `Gemini: Select ${row.tierLabelEn} / ${row.modeLabelEn}`,
+      title: `Gemini: ${row.tierLabelJa} (${row.modeLabelJa}) モデルを選択`,
+      subtitle: `Gemini: Select ${row.tierLabelEn} ${row.modeLabelEn} Model`,
       message: {
         name: "gemini.selectModel" as const,
         tier: row.tier,
