@@ -15,6 +15,20 @@ li.Entry {
   &:not(.selected):hover {
     background-color: var(--entry-hover-background-color);
   }
+
+  // 完全一致 URL が別タブでも開かれている検索結果に、行単位で識別色を敷く。
+  // 色番号は duplicateColor (0..9) に対応し、CSS 変数はテーマ側で定義。
+  @for $i from 0 through 9 {
+    &.duplicate_#{$i} {
+      background-color: var(--duplicate-highlight-#{$i});
+    }
+
+    &.duplicate_#{$i}:hover,
+    &.duplicate_#{$i}.selected {
+      background-color: var(--duplicate-highlight-#{$i}-active);
+    }
+  }
+
   img {
     margin-top: 11px;
     margin-right: 6px;

@@ -72,6 +72,8 @@ export default function Entry(props: {
       class="Entry"
       classList={{
         selected: props.isSelected,
+        [`duplicate_${props.command.duplicateHighlightColor}`]:
+          props.command.duplicateHighlightColor !== undefined,
       }}
       onClick={() => {
         props.onSelect(props.command);

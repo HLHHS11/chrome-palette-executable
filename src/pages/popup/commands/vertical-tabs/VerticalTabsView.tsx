@@ -63,8 +63,8 @@ export default function VerticalTabsView(props: {
               class="VerticalTabEntry"
               classList={{
                 selected: i() === selectedI(),
-                [`duplicate_${item.duplicateColor}`]:
-                  item.duplicateColor !== null,
+                [`duplicate_${item.duplicateHighlightColor}`]:
+                  item.duplicateHighlightColor !== null,
               }}
               onClick={() => props.onSelect(item)}
               ref={(el) => {

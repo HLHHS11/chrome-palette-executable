@@ -1,5 +1,7 @@
 import type { HighlightSpec } from "@core/search";
 
+import type { DuplicateHighlightColor } from "./duplicate-highlight";
+
 export type CommandKeybind = {
   key?: string;
   code?: string;
@@ -33,6 +35,12 @@ type CommandBase = {
    * （fuzzysort などの検索エンジンに直接は依存しない）。
    */
   highlights?: HighlightSpec;
+  /**
+   * 同一ページ (完全一致 URL) が複数開かれている行に付ける識別色。
+   * 同じ色 = 同じページが別タブでも開かれている、というマーク。
+   * 重複していない行では undefined。
+   */
+  duplicateHighlightColor?: DuplicateHighlightColor;
 };
 
 export type LegacyCommand = CommandBase & {

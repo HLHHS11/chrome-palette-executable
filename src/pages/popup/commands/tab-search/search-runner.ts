@@ -1,4 +1,8 @@
-import type { PaletteRow } from "@core/command";
+import {
+  type DuplicateHighlightColor,
+  type PaletteRow,
+  assignDuplicateHighlightColors,
+} from "@core/command";
 import type { HighlightSpec } from "@core/search";
 
 import { faviconURL } from "../../Entry";
@@ -11,7 +15,8 @@ function makeTabRow(
     TabSnapshot,
     "tabId" | "windowId" | "title" | "host" | "path" | "favicon"
   >,
-  highlights: HighlightSpec | undefined
+  highlights: HighlightSpec | undefined,
+  duplicateHighlightColor: DuplicateHighlightColor | undefined
 ): PaletteRow {
   // `url` をセットしない理由:
   // - Command.url があると runCommand が `chrome.tabs.create({url})` で新規タブを開いてしまう
@@ -22,6 +27,7 @@ function makeTabRow(
     subtitle: snap.host + snap.path,
     icon: snap.favicon,
     highlights,
+    duplicateHighlightColor,
     handler: () => {
       chrome.tabs.update(snap.tabId, { active: true });
       chrome.windows.update(snap.windowId, { focused: true });
@@ -61,7 +67,12 @@ export class TabSearchRunner {
     if (trimmed.length === 0) return [];
 
     if (this.cachedQuery === trimmed && this.cachedHits !== null) {
-      return this.cachedHits.map((h) => makeTabRow(h, h.highlights));
+      const colorByUrl = assignDuplicateHighlightColors(
+        this.cachedHits.map((h) => h.url)
+      );
+      return this.cachedHits.map((h) =>
+        makeTabRow(h, h.highlights, colorByUrl.get(h.url))
+      );
     }
 
     const snaps = this.snapshots();
@@ -93,6 +104,11 @@ export class TabSearchRunner {
     this.cachedQuery = trimmed;
     this.cache.save(trimmed, toCache);
 
-    return hits.map(({ item, highlights }) => makeTabRow(item, highlights));
+    const colorByUrl = assignDuplicateHighlightColors(
+      hits.map(({ item }) => item.url)
+    );
+    return hits.map(({ item, highlights }) =>
+      makeTabRow(item, highlights, colorByUrl.get(item.url))
+    );
   }
 }

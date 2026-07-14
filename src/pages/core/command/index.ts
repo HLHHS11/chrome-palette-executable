@@ -1,4 +1,8 @@
 export {
+  type DuplicateHighlightColor,
+  assignDuplicateHighlightColors,
+} from "./duplicate-highlight";
+export {
   registerKeybindListener,
   type CommandKeybindListenerOptions,
 } from "./listener";

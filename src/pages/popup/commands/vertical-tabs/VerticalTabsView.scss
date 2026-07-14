@@ -29,12 +29,12 @@ li.VerticalTabEntry {
 
   @for $i from 0 through 9 {
     &.duplicate_#{$i} {
-      background-color: var(--vertical-tab-duplicate-#{$i});
+      background-color: var(--duplicate-highlight-#{$i});
     }
 
     &.duplicate_#{$i}:hover,
     &.duplicate_#{$i}.selected {
-      background-color: var(--vertical-tab-duplicate-#{$i}-active);
+      background-color: var(--duplicate-highlight-#{$i}-active);
     }
   }
 

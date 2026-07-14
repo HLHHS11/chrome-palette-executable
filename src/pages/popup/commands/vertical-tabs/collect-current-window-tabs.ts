@@ -1,6 +1,8 @@
+import { assignDuplicateHighlightColors } from "@core/command";
+
 import { faviconURL } from "~/util/favicon";
 
-import type { VerticalTabDuplicateColor, VerticalTabItem } from "./types";
+import type { VerticalTabItem } from "./types";
 
 function pickTabNumberForIndex(idx: number, total: number): number | null {
   if (idx < 8) return idx + 1;
@@ -42,25 +44,9 @@ export async function collectVerticalTabs(
     .sort((a, b) => a.index - b.index)
     .filter((tab) => !collapsedGroupIds.has(tab.groupId));
 
-  const duplicateCountByUrl = new Map<string, number>();
-  for (const tab of visibleTabs) {
-    const url = tab.url ?? "";
-    if (!url) continue;
-    duplicateCountByUrl.set(url, (duplicateCountByUrl.get(url) ?? 0) + 1);
-  }
-
-  const duplicateColorByUrl = new Map<string, VerticalTabDuplicateColor>();
-  let duplicateSetIndex = 0;
-  for (const tab of visibleTabs) {
-    const url = tab.url ?? "";
-    if (!url || (duplicateCountByUrl.get(url) ?? 0) < 2) continue;
-    if (duplicateColorByUrl.has(url)) continue;
-    duplicateColorByUrl.set(
-      url,
-      (duplicateSetIndex % 10) as VerticalTabDuplicateColor
-    );
-    duplicateSetIndex += 1;
-  }
+  const duplicateColorByUrl = assignDuplicateHighlightColors(
+    visibleTabs.map((tab) => tab.url ?? "")
+  );
 
   const items: VerticalTabItem[] = [];
   visibleTabs.forEach((tab, idx) => {
@@ -73,7 +59,7 @@ export async function collectVerticalTabs(
       url,
       faviconUrl: faviconURL(url),
       shortcutNumber: pickTabNumberForIndex(idx, visibleTabs.length),
-      duplicateColor: duplicateColorByUrl.get(url) ?? null,
+      duplicateHighlightColor: duplicateColorByUrl.get(url) ?? null,
     });
   });
   return items;

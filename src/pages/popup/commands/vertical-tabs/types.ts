@@ -1,4 +1,4 @@
-export type VerticalTabDuplicateColor = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+import type { DuplicateHighlightColor } from "@core/command";
 
 export type VerticalTabItem = {
   tabId: number;
@@ -7,5 +7,5 @@ export type VerticalTabItem = {
   url: string;
   faviconUrl: string | undefined;
   shortcutNumber: number | null;
-  duplicateColor: VerticalTabDuplicateColor | null;
+  duplicateHighlightColor: DuplicateHighlightColor | null;
 };
