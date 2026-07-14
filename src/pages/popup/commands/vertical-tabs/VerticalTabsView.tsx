@@ -1,5 +1,6 @@
 import "./VerticalTabsView.scss";
 
+import { timeAgo } from "@pages/lib/time-ago";
 import {
   For,
   Show,
@@ -91,7 +92,14 @@ export default function VerticalTabsView(props: {
               <div class="vertical_tab_number">{item.shortcutNumber ?? ""}</div>
               <div class="vertical_tab_text">
                 <div class="vertical_tab_title">{item.title}</div>
-                <div class="vertical_tab_url">{item.url}</div>
+                <div class="vertical_tab_url">
+                  {item.url}
+                  <Show when={item.lastAccessed}>
+                    {(time) => (
+                      <span class="vertical_tab_time">{timeAgo(time())}</span>
+                    )}
+                  </Show>
+                </div>
               </div>
             </li>
           )}

@@ -60,6 +60,7 @@ export async function collectVerticalTabs(
       faviconUrl: faviconURL(url),
       shortcutNumber: pickTabNumberForIndex(idx, visibleTabs.length),
       duplicateHighlightColor: duplicateColorByUrl.get(url) ?? null,
+      lastAccessed: tab.lastAccessed,
     });
   });
   return items;

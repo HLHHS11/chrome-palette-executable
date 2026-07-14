@@ -71,5 +71,13 @@ li.VerticalTabEntry {
     margin-top: 1px;
     font-size: 11px;
     line-height: 1.25;
+
+    .vertical_tab_time {
+      float: right;
+      margin-left: 8px;
+      font-style: italic;
+      font-size: 10px;
+      white-space: nowrap;
+    }
   }
 }

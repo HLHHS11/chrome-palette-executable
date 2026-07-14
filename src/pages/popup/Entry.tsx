@@ -3,8 +3,8 @@ import "./Entry.scss";
 
 import type { Command } from "@core/command";
 import type { HighlightRanges } from "@core/search";
+import { timeAgo } from "@pages/lib/time-ago";
 import { JSX, Show, createEffect } from "solid-js";
-import twas from "twas";
 
 import Keyword from "./Keyword";
 import Shortcut from "./Shortcut";
@@ -55,14 +55,6 @@ function renderWithHighlights(
   }
   if (cursor < text.length) out.push(text.slice(cursor));
   return out;
-}
-
-/**
- * twas の相対時刻表示を流用しつつ、単数を "a/an" ではなく "1" で見せる
- * ("an hour ago" → "1 hour ago")。数字に揃えた方がどちらが新しいか比較しやすいため。
- */
-function timeAgo(ms: number): string {
-  return twas(ms).replace(/^an? /, "1 ");
 }
 
 export default function Entry(props: {
