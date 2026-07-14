@@ -18,4 +18,9 @@ export type TabSnapshot = {
   reachable: boolean;
   /** ファビコン URL (popup 表示用)。 */
   favicon?: string;
+  /**
+   * タブが最後にアクティブだった時刻 (ms epoch)。相対時刻表示と、
+   * 重複タブを新しい順に並べるためのキー。取得できない場合は undefined。
+   */
+  lastAccessed?: number;
 };

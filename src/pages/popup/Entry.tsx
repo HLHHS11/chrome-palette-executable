@@ -57,6 +57,14 @@ function renderWithHighlights(
   return out;
 }
 
+/**
+ * twas の相対時刻表示を流用しつつ、単数を "a/an" ではなく "1" で見せる
+ * ("an hour ago" → "1 hour ago")。数字に揃えた方がどちらが新しいか比較しやすいため。
+ */
+function timeAgo(ms: number): string {
+  return twas(ms).replace(/^an? /, "1 ");
+}
+
 export default function Entry(props: {
   isSelected: boolean;
   isExpanded: boolean;
@@ -66,6 +74,15 @@ export default function Entry(props: {
 }) {
   const url = () => ("url" in props.command ? props.command.url || "" : "");
   const snippet = () => props.command.highlights?.snippet;
+
+  // 相対時刻 (lastVisitTime) をどの行の右端に添えるか。
+  // - URL を持つ行 (history / bookmarks) は URL 行に添える。
+  // - URL は無いが subtitle を持つ行 (タブ横断検索の host+path) は subtitle 行に添える。
+  // - URL も subtitle も無い行 (ブックマークフォルダ) は独立した行に出す。
+  const timeOnSubtitle = () =>
+    !!props.command.lastVisitTime && !!props.command.subtitle && !url();
+  const showUrlLine = () =>
+    !!url() || (!!props.command.lastVisitTime && !props.command.subtitle);
 
   return (
     <li
@@ -113,13 +130,16 @@ export default function Entry(props: {
               props.command.subtitle || "",
               props.command.highlights?.subtitle
             )}
+            <Show when={timeOnSubtitle() && props.command.lastVisitTime}>
+              {(time) => <span class="time_ago">{timeAgo(time())}</span>}
+            </Show>
           </div>
         </Show>
-        <Show when={url() || props.command.lastVisitTime}>
+        <Show when={showUrlLine()}>
           <div class="subtitle">
             {renderWithHighlights(url(), props.command.highlights?.url)}
             <Show when={props.command.lastVisitTime}>
-              {(time) => <span class="time_ago">{twas(time())}</span>}
+              {(time) => <span class="time_ago">{timeAgo(time())}</span>}
             </Show>
           </div>
         </Show>

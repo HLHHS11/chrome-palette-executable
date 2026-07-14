@@ -298,7 +298,13 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
       });
     }
 
-    hits.sort((a, b) => b.score - a.score);
+    // スコア降順。同点 (典型的には同一 URL の重複タブ) は最終アクセスが新しい方を上に。
+    // lastAccessed 不明のタブは最古扱いにして後ろへ。
+    hits.sort(
+      (a, b) =>
+        b.score - a.score ||
+        (b.item.lastAccessed ?? 0) - (a.item.lastAccessed ?? 0)
+    );
     return hits;
   },
 };

@@ -13,7 +13,13 @@ import type { TabSnapshot } from "./types";
 function makeTabRow(
   snap: Pick<
     TabSnapshot,
-    "tabId" | "windowId" | "title" | "host" | "path" | "favicon"
+    | "tabId"
+    | "windowId"
+    | "title"
+    | "host"
+    | "path"
+    | "favicon"
+    | "lastAccessed"
   >,
   highlights: HighlightSpec | undefined,
   duplicateHighlightColor: DuplicateHighlightColor | undefined
@@ -26,6 +32,8 @@ function makeTabRow(
     title: snap.title,
     subtitle: snap.host + snap.path,
     icon: snap.favicon,
+    // lastAccessed を相対時刻 (「◯分前」) 表示に流用する。Entry が lastVisitTime を twas で描画する。
+    lastVisitTime: snap.lastAccessed,
     highlights,
     duplicateHighlightColor,
     handler: () => {
@@ -97,6 +105,7 @@ export class TabSearchRunner {
       host: item.host,
       path: item.path,
       favicon: item.favicon,
+      lastAccessed: item.lastAccessed,
       score,
       highlights,
     }));

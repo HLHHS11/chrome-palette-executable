@@ -53,6 +53,7 @@ export async function collectTabSnapshots(): Promise<TabSnapshot[]> {
         text,
         reachable,
         favicon: faviconURL(url),
+        lastAccessed: tab.lastAccessed,
       };
     })
   );

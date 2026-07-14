@@ -12,6 +12,7 @@ export type CachedHit = {
   host: string;
   path: string;
   favicon?: string;
+  lastAccessed?: number;
   score: number;
   highlights?: HighlightSpec;
 };
