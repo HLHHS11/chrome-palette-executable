@@ -345,7 +345,7 @@ export default function TabRetentionView(props: {
         }
       >
         <div class="tab_retention_observe">
-          初回監視中です。24時間は削除せず、対象だけを表示します。
+          初回監視中です。3時間は削除せず、対象だけを表示します。
         </div>
       </Show>
       <Show when={error()}>

@@ -56,7 +56,7 @@ describe("tab retention policy", () => {
     );
   });
 
-  it("keeps an expired tab observable during the first 24 hours", () => {
+  it("keeps an expired tab observable during the first 3 hours", () => {
     const record = normalRecord({
       lastUsedAt: now - TAB_RETENTION_POLICY.normalInactiveMs,
     });

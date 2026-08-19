@@ -14,7 +14,7 @@ export const TAB_RETENTION_POLICY = {
   autoProtectActiveMs: 10 * 60 * 1000,
   autoProtectVisitCount: 3,
   staleAfterMs: 21 * HOUR_MS,
-  observeOnlyMs: 24 * HOUR_MS,
+  observeOnlyMs: 3 * HOUR_MS,
   deletedHistoryMs: 24 * HOUR_MS,
   deletedHistoryLimit: 100,
   idleDetectionSeconds: 5 * 60,
