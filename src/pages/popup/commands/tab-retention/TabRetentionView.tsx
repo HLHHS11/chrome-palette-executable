@@ -20,6 +20,7 @@ import {
 } from "solid-js";
 import { tinykeys } from "tinykeys";
 
+import ConfirmDialog from "../../components/ConfirmDialog";
 import { faviconURL } from "../../util/favicon";
 
 type TabRow = { kind: "tab"; item: TabRetentionTabItem };
@@ -88,6 +89,8 @@ export default function TabRetentionView(props: {
   const [query, setQuery] = createSignal("");
   const [selectedInternal, setSelectedInternal] = createSignal(0);
   const [error, setError] = createSignal("");
+  const [pendingDeletion, setPendingDeletion] =
+    createSignal<TabRetentionTabItem>();
   let rootRef: HTMLDivElement | undefined;
   let searchRef: HTMLInputElement | undefined;
 
@@ -225,6 +228,26 @@ export default function TabRetentionView(props: {
     }
   };
 
+  const deletePendingTab = async () => {
+    const item = pendingDeletion();
+    if (!item) return;
+    setPendingDeletion(undefined);
+    setError("");
+    try {
+      await chrome.tabs.remove(item.tabId);
+      await refetch();
+      requestAnimationFrame(() => rootRef?.focus());
+    } catch (e: unknown) {
+      setError(`エラーが発生しました。詳細: ${e}`);
+      requestAnimationFrame(() => rootRef?.focus());
+    }
+  };
+
+  const cancelPendingDeletion = () => {
+    setPendingDeletion(undefined);
+    requestAnimationFrame(() => rootRef?.focus());
+  };
+
   onMount(() => requestAnimationFrame(() => rootRef?.focus()));
 
   const isSearching = () => document.activeElement === searchRef;
@@ -269,6 +292,13 @@ export default function TabRetentionView(props: {
       if (isSearching() || event.isComposing) return;
       event.preventDefault();
       void changeProtection(rows()[selectedIndex()], "normal");
+    },
+    "Control+x": (event) => {
+      if (isSearching() || event.isComposing) return;
+      const row = rows()[selectedIndex()];
+      if (row?.kind !== "tab") return;
+      event.preventDefault();
+      setPendingDeletion(row.item);
     },
     1: (event) => {
       if (isSearching()) return;
@@ -453,9 +483,21 @@ export default function TabRetentionView(props: {
       </ul>
 
       <div class="tab_retention_help">
-        1–4 表示切替 · ↑↓ 選択 · Enter 移動・復元 · P 明示保持 · U
+        1–4 表示切替 · ↑↓ 選択 · Enter 移動・復元 · Ctrl+X 削除 · P 明示保持 · U
         自動削除へ戻す · / 検索
       </div>
+
+      <Show when={pendingDeletion()}>
+        {(item) => (
+          <ConfirmDialog
+            title="タブを削除しますか？"
+            message={`「${item().title}」を閉じます。\n${item().url}`}
+            confirmLabel="削除"
+            onConfirm={() => void deletePendingTab()}
+            onCancel={cancelPendingDeletion}
+          />
+        )}
+      </Show>
     </div>
   );
 }

@@ -39,19 +39,19 @@ async function setCurrentTabRetention(
 
 const entryCommands: Command[] = [
   {
-    title: "Tab Cleanup",
+    title: "Tabs: Cleanup",
     subtitle: "自動削除予定・保持中・最近削除したタブを表示",
     keyword: `${TAB_RETENTION_KEYWORD}>`,
     icon: faviconURL("about:blank"),
     handler: () => setInput(`${TAB_RETENTION_KEYWORD}>`),
   },
   {
-    title: "Keep Current Tab from Auto-Close",
+    title: "Tabs: Keep Current Tab from Auto-Close",
     subtitle: "現在のタブを明示保持する",
     handler: () => setCurrentTabRetention("manual-protected"),
   },
   {
-    title: "Allow Auto-Close for Current Tab",
+    title: "Tabs: Allow Auto-Close for Current Tab",
     subtitle: "保持と利用実績を解除し、3時間の猶予を開始する",
     handler: () => setCurrentTabRetention("normal"),
   },
