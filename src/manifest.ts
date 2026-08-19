@@ -71,6 +71,7 @@ const manifest = defineManifest(async () => ({
     "management",
     "history",
     "favicon",
+    "idle",
     "notifications",
     "storage",
   ],

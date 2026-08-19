@@ -1,0 +1,154 @@
+.TabRetention {
+  display: flex;
+  flex-direction: column;
+  outline: none;
+  height: 600px;
+
+  .tab_retention_header {
+    border-bottom: 1px solid var(--input-border-color);
+    padding: 10px 12px;
+  }
+
+  .tab_retention_categories {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+
+    button {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      appearance: none;
+      cursor: pointer;
+      border: 1px solid var(--input-border-color);
+      border-radius: 4px;
+      background: transparent;
+      padding: 6px 4px;
+      color: var(--text-color);
+      font: inherit;
+      font-size: 12px;
+
+      &.selected {
+        background-color: var(--entry-selected-background-color);
+        color: var(--entry-selected-text-color);
+      }
+    }
+
+    .category_key,
+    .category_count {
+      opacity: 0.65;
+      font-size: 10px;
+    }
+  }
+
+  input {
+    box-sizing: border-box;
+    margin-top: 8px;
+    outline: none;
+    border: 1px solid var(--input-border-color);
+    border-radius: 4px;
+    background: transparent;
+    padding: 7px 9px;
+    width: 100%;
+    color: var(--text-color);
+    font: inherit;
+    font-size: 13px;
+  }
+
+  .tab_retention_observe,
+  .tab_retention_error {
+    padding: 7px 14px;
+    font-size: 11px;
+  }
+
+  .tab_retention_observe {
+    background: var(--shortcut-background-color);
+  }
+
+  .tab_retention_error {
+    color: #d33;
+  }
+
+  .tab_retention_list {
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .tab_retention_empty {
+    opacity: 0.7;
+    padding: 40px 20px;
+    list-style: none;
+    text-align: center;
+  }
+
+  .tab_retention_help {
+    border-top: 1px solid var(--input-border-color);
+    padding: 7px 12px;
+    font-size: 10px;
+    text-align: center;
+  }
+}
+
+li.TabRetentionEntry {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 14px;
+  list-style: none;
+
+  &.selected {
+    outline: 1px solid var(--entry-selected-border-color);
+    background-color: var(--entry-selected-background-color);
+    color: var(--entry-selected-text-color);
+  }
+
+  &:not(.selected):hover {
+    background-color: var(--entry-hover-background-color);
+  }
+
+  &.restored {
+    opacity: 0.55;
+  }
+
+  .retention_icon {
+    justify-self: center;
+    width: 16px;
+    height: 16px;
+  }
+
+  .retention_text {
+    min-width: 0;
+  }
+
+  .retention_title,
+  .retention_url {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .retention_title {
+    font-size: 13px;
+  }
+
+  .retention_url {
+    opacity: 0.65;
+    margin-top: 1px;
+    font-size: 10px;
+  }
+
+  .retention_metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 9px;
+    opacity: 0.78;
+    margin-top: 4px;
+    font-size: 10px;
+  }
+}

@@ -3,9 +3,11 @@ import {
   type RpcCommand,
   runRpcCommandInPopup,
 } from "@core/command";
+import { CrossRuntimeMessenger } from "@core/cross-runtime-message";
 import { PaletteSearcher } from "@core/palette-search";
 import { type ExtractRpcRequest, createTabsRpcClient } from "@core/rpc";
 import type { routes } from "@pages/content/routes";
+import { tabRetentionLaunchIntentMessage } from "@pages/tab-retention";
 import {
   createEffect,
   createMemo,
@@ -17,6 +19,10 @@ import {
 
 import { listAllCommands } from "../command";
 import PaletteShell from "./PaletteShell";
+import {
+  TAB_RETENTION_KEYWORD,
+  TabRetentionView,
+} from "./commands/tab-retention";
 import {
   TAB_SEARCH_KEYWORD,
   TabSearch,
@@ -99,6 +105,15 @@ const [verticalTabs] = createResource(isVerticalTabsMode, (isActive) =>
   isActive
     ? collectVerticalTabs({ windowId: verticalTabsWindowId })
     : Promise.resolve([])
+);
+const [tabRetentionLaunchIntent] = createResource(() =>
+  new CrossRuntimeMessenger().take(tabRetentionLaunchIntentMessage)
+);
+const isTabRetentionMode = createMemo(
+  () =>
+    parsedInput().keyword === TAB_RETENTION_KEYWORD ||
+    (tabRetentionLaunchIntent() !== null &&
+      tabRetentionLaunchIntent() !== undefined)
 );
 
 // TODO: #2 FIX
@@ -235,6 +250,10 @@ const App = () => {
         <VerticalTabsView
           items={() => verticalTabs() ?? []}
           onSelect={selectVerticalTab}
+        />
+      ) : isTabRetentionMode() ? (
+        <TabRetentionView
+          initialCategory={tabRetentionLaunchIntent()?.category ?? "closing"}
         />
       ) : (
         <PaletteShell
