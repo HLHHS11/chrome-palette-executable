@@ -262,6 +262,25 @@ export default function TabRetentionView(props: {
       event.preventDefault();
       setSelectedInternal((index) => index + 1);
     },
+    ArrowLeft: (event) => {
+      if (isSearching() || event.isComposing) return;
+      event.preventDefault();
+      const currentIndex = categories.findIndex(
+        (item) => item.id === category()
+      );
+      setCategory(
+        categories[(currentIndex - 1 + categories.length) % categories.length]
+          .id
+      );
+    },
+    ArrowRight: (event) => {
+      if (isSearching() || event.isComposing) return;
+      event.preventDefault();
+      const currentIndex = categories.findIndex(
+        (item) => item.id === category()
+      );
+      setCategory(categories[(currentIndex + 1) % categories.length].id);
+    },
     Enter: (event) => {
       if (event.isComposing) return;
       event.preventDefault();
@@ -483,8 +502,8 @@ export default function TabRetentionView(props: {
       </ul>
 
       <div class="tab_retention_help">
-        1–4 表示切替 · ↑↓ 選択 · Enter 移動・復元 · Ctrl+X 削除 · P 明示保持 · U
-        自動削除へ戻す · / 検索
+        1–4・←→ 表示切替 · ↑↓ 選択 · Enter 移動・復元 · Ctrl+X 削除 · P 明示保持
+        · U 自動削除へ戻す · / 検索
       </div>
 
       <Show when={pendingDeletion()}>
