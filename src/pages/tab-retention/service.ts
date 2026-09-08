@@ -422,6 +422,36 @@ export class TabRetentionService {
     });
   }
 
+  // 明示保持は「この URL は重要」という宣言であり、タブが失われても宣言は残る。開き直す
+  // 操作でその宣言を実体のあるタブへ結び直す。
+  reopenUnmatchedManualUrl(url: string): Promise<void> {
+    return this.queueOperation(async () => {
+      const now = Date.now();
+      const [state, tabs] = await Promise.all([
+        this.storage.loadPersistent(),
+        this.queryManagedTabs(),
+      ]);
+      // 同じ URL のタブが複数開いていて一意に決められなかった場合も含め、既に開いて
+      // いるならそれを明示保持の実体とみなし、重複したタブを増やさない。
+      const target =
+        tabs.find((tab) => tabUrl(tab) === url) ??
+        (await chrome.tabs.create({ url, active: true }));
+      if (!hasTabId(target) || target.incognito) {
+        throw new Error("The tab can not be managed.");
+      }
+      await chrome.tabs.update(target.id, { active: true });
+      await chrome.windows.update(target.windowId, { focused: true });
+
+      const record = this.ensureRecord(state, target, now);
+      record.retention = "manual-protected";
+      delete record.autoProtectionReason;
+      state.unmatchedManualUrls = state.unmatchedManualUrls.filter(
+        (candidate) => candidate !== url
+      );
+      await this.storage.savePersistent(state);
+    });
+  }
+
   forgetUnmatchedManualUrl(url: string): Promise<void> {
     return this.queueOperation(async () => {
       const state = await this.storage.loadPersistent();

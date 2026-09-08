@@ -136,6 +136,14 @@ export async function restoreAutoDeletedTab(params: {
   return { ok: true, data: {} };
 }
 
+export async function reopenUnmatchedManualProtection(params: {
+  url: string;
+}): Promise<RpcResponse<RpcVoidResponseBody>> {
+  if (!params.url) return { ok: false, error: "Invalid URL." };
+  await service.reopenUnmatchedManualUrl(params.url);
+  return { ok: true, data: {} };
+}
+
 export async function forgetUnmatchedManualProtection(params: {
   url: string;
 }): Promise<RpcResponse<RpcVoidResponseBody>> {

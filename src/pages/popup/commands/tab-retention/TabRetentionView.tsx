@@ -179,7 +179,15 @@ export default function TabRetentionView(props: {
     if (!row) return;
     setError("");
     try {
-      if (row.kind === "unmatched-manual") return;
+      if (row.kind === "unmatched-manual") {
+        const response = await callBackgroundRpc({
+          name: "tabRetention.reopenUnmatchedManual",
+          url: row.item.url,
+        });
+        if (!response.ok) throw new Error(response.error);
+        window.close();
+        return;
+      }
       if (row.kind === "tab") {
         await chrome.tabs.update(row.item.tabId, { active: true });
         await chrome.windows.update(row.item.windowId, { focused: true });
@@ -490,7 +498,9 @@ export default function TabRetentionView(props: {
                           <Show when={row.item.restoredAt}>復元済み</Show>
                         </>
                       ) : (
-                        <>再起動後に一意のタブへ関連付けできませんでした</>
+                        <>
+                          再起動後に一意のタブへ関連付けできませんでした・Enterで開き直す
+                        </>
                       )}
                     </div>
                   </div>

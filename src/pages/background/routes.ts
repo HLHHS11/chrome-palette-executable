@@ -2,6 +2,7 @@ import type { RpcRoute } from "@core/rpc";
 import {
   forgetUnmatchedManualProtection,
   listTabRetentionOverview,
+  reopenUnmatchedManualProtection,
   restoreAutoDeletedTab,
   setTabRetentionProtection,
 } from "@pages/tab-retention/background";
@@ -45,6 +46,10 @@ export const backgroundRoutes = [
   {
     name: "tabRetention.restoreDeleted",
     handler: restoreAutoDeletedTab,
+  },
+  {
+    name: "tabRetention.reopenUnmatchedManual",
+    handler: reopenUnmatchedManualProtection,
   },
   {
     name: "tabRetention.forgetUnmatchedManual",
