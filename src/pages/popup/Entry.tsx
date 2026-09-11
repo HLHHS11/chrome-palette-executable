@@ -100,7 +100,12 @@ export default function Entry(props: {
           <img
             classList={{
               img: true,
-              img_big: !!(props.command.subtitle || url() || snippet()),
+              img_big: !!(
+                props.command.subtitle ||
+                url() ||
+                snippet() ||
+                props.command.memo
+              ),
             }}
             src={icon()}
             alt=""
@@ -134,6 +139,13 @@ export default function Entry(props: {
               {(time) => <span class="time_ago">{timeAgo(time())}</span>}
             </Show>
           </div>
+        </Show>
+        <Show when={props.command.memo}>
+          {(memo) => (
+            <div class="memo" title={memo()}>
+              {renderWithHighlights(memo(), props.command.highlights?.memo)}
+            </div>
+          )}
         </Show>
         <Show when={snippet()}>
           {(s) => (

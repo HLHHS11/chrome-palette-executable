@@ -13,8 +13,9 @@ import fuzzysort from "fuzzysort";
  * - 0: title
  * - 1: subtitle
  * - 2: url
+ * - 3: memo
  */
-const FUZZY_KEYS = ["title", "subtitle", "url"] as const;
+const FUZZY_KEYS = ["title", "subtitle", "url", "memo"] as const;
 
 /**
  * 連続するインデックス配列 (例: `[1,2,3,7,8]`) を半開区間 (`[[1,4],[7,9]]`) に畳む。
@@ -52,7 +53,7 @@ export type PaletteSearcherOptions = {
 /**
  * コマンドパレットのデフォルト検索エンジン。
  *
- * fuzzysort で `title` / `subtitle` / `url` を曖昧マッチし、`rankingService` が
+ * fuzzysort で `title` / `subtitle` / `url` / `memo` を曖昧マッチし、`rankingService` が
  * 与えられていれば実行履歴に基づくブーストを加算して並べ替える。返り値は
  * `SearchHit<Command>[]` に詰め替え、各ヒットは `HighlightSpec` を伴う。
  *
@@ -81,10 +82,12 @@ export class PaletteSearcher implements Searcher<Command> {
       const titleResult = match[0];
       const subtitleResult = match[1];
       const urlResult = match[2];
+      const memoResult = match[3];
       const highlights: HighlightSpec = {
         title: indexesToRanges(titleResult?.indexes ?? []),
         subtitle: indexesToRanges(subtitleResult?.indexes ?? []),
         url: indexesToRanges(urlResult?.indexes ?? []),
+        memo: indexesToRanges(memoResult?.indexes ?? []),
       };
       return {
         item: { ...match.obj, highlights },

@@ -1,10 +1,21 @@
-import { createTabsRpcClient } from "@core/rpc";
+import { createRuntimeRpcClient, createTabsRpcClient } from "@core/rpc";
+import type { backgroundRoutes } from "@pages/background/routes";
 import { routes as contentRoutes } from "@pages/content/routes";
 
 import { faviconURL } from "../../Entry";
 import type { TabSnapshot } from "./types";
 
 const callContentRpc = createTabsRpcClient<typeof contentRoutes>();
+const callBackgroundRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
+
+/** メモ取得に失敗しても本文検索は続けたいので、空マップに落とす。 */
+async function loadMemosByTabId(): Promise<Map<number, string>> {
+  const response = await callBackgroundRpc({ name: "tabMemo.list" }).catch(
+    () => undefined
+  );
+  if (!response?.ok || !("data" in response)) return new Map();
+  return new Map(response.data.memos.map(({ tabId, text }) => [tabId, text]));
+}
 
 /**
  * 全タブを並列に走査し、各タブの本文 + メタ情報のスナップショットを返す。
@@ -16,7 +27,10 @@ const callContentRpc = createTabsRpcClient<typeof contentRoutes>();
  * - 結果順は `chrome.tabs.query({})` の返却順 (= タブの index 順) に従う。
  */
 export async function collectTabSnapshots(): Promise<TabSnapshot[]> {
-  const tabs = await chrome.tabs.query({});
+  const [tabs, memosByTabId] = await Promise.all([
+    chrome.tabs.query({}),
+    loadMemosByTabId(),
+  ]);
 
   const snapshots = await Promise.all(
     tabs.map(async (tab): Promise<TabSnapshot | null> => {
@@ -53,6 +67,7 @@ export async function collectTabSnapshots(): Promise<TabSnapshot[]> {
         text,
         reachable,
         favicon: faviconURL(url),
+        memo: memosByTabId.get(tab.id),
         lastAccessed: tab.lastAccessed,
       };
     })

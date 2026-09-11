@@ -16,6 +16,11 @@ const W_BODY_FREQ = 0.05;
 const W_TITLE = 0.25;
 const W_PATH = 0.1;
 const W_HOST = 0.05;
+/**
+ * メモの重み。ユーザーがそのタブについて自分で書いた言葉なので、
+ * ページ本文と同等以上に強い手がかりとして扱う。
+ */
+const W_MEMO = 0.8;
 /** 本文ヒット 0 のタブに掛けるペナルティ係数。 */
 const BODY_ZERO_PENALTY = 0.5;
 /** 単語境界が両側 / 片側 / なしの場合の品質係数。 */
@@ -28,6 +33,7 @@ const BOUNDARY_NONE = 0.12;
  * 品質係数だけでは埋め込み一致との差が小さくなりすぎるため、明示的に加点する。
  */
 const BONUS_WORD_BODY = 0.6;
+const BONUS_WORD_MEMO = 0.7;
 const BONUS_WORD_TITLE = 0.45;
 const BONUS_WORD_PATH = 0.25;
 const BONUS_WORD_HOST = 0.15;
@@ -198,10 +204,11 @@ function tokenize(query: string): string[] {
  * タブ横断検索の Searcher 実装。
  *
  * - 入力クエリをスペース区切り AND マルチターム解釈
- * - 各タームについて body / title / path / host にヒットしたか + 単語境界品質を見る
+ * - 各タームについて body / memo / title / path / host にヒットしたか + 単語境界品質を見る
  * - 単語としての一致 (両側境界) にはボーナスを上乗せし、途中一致は大幅に減点
  * - 全タームが何かしらに最低1回ヒットしたタブのみ採用
- * - 本文ヒット0のタブにはペナルティ
+ * - 本文ヒット0のタブにはペナルティ。ただしメモに当たっていれば掛けない
+ *   (メモは意図的に書かれた言葉なので、本文に無いのは当たり前)
  * - スニペットは body の最初のヒット位置から切り出す
  */
 export const tabContentSearcher: Searcher<TabSnapshot> = {
@@ -213,23 +220,27 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
 
     for (const snap of candidates) {
       const titleLower = snap.title.toLowerCase();
+      const memoLower = (snap.memo ?? "").toLowerCase();
       const textLower = snap.text.toLowerCase();
       const pathLower = snap.path.toLowerCase();
       const hostLower = snap.host.toLowerCase();
 
       let totalScore = 0;
       let totalBodyHits = 0;
+      let totalMemoHits = 0;
       let firstBodyHitPos: number | null = null;
       let allTermsHitSomewhere = true;
 
       for (const term of tokens) {
         const bodyPositions = findAllPositions(textLower, term);
+        const memoPositions = findAllPositions(memoLower, term);
         const titlePositions = findAllPositions(titleLower, term);
         const pathPositions = findAllPositions(pathLower, term);
         const hostPositions = findAllPositions(hostLower, term);
 
         if (
           bodyPositions.length === 0 &&
+          memoPositions.length === 0 &&
           titlePositions.length === 0 &&
           pathPositions.length === 0 &&
           hostPositions.length === 0
@@ -242,6 +253,11 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
           textLower,
           term,
           bodyPositions
+        );
+        const memoQuality = effectiveMatchQuality(
+          memoLower,
+          term,
+          memoPositions
         );
         const titleQuality = effectiveMatchQuality(
           titleLower,
@@ -263,6 +279,8 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
           W_BODY * bodyQuality +
           (bodyQuality >= BOUNDARY_FULL ? BONUS_WORD_BODY : 0) +
           W_BODY_FREQ * Math.log(1 + bodyPositions.length) +
+          W_MEMO * memoQuality +
+          (memoQuality >= BOUNDARY_FULL ? BONUS_WORD_MEMO : 0) +
           W_TITLE * titleQuality +
           (titleQuality >= BOUNDARY_FULL ? BONUS_WORD_TITLE : 0) +
           W_PATH * pathQuality +
@@ -272,6 +290,7 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
 
         totalScore += termScore;
         totalBodyHits += bodyPositions.length;
+        totalMemoHits += memoPositions.length;
         if (firstBodyHitPos === null && bodyPositions.length > 0) {
           firstBodyHitPos = bodyPositions[0];
         }
@@ -280,7 +299,9 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
       if (!allTermsHitSomewhere) continue;
 
       let score = totalScore / tokens.length;
-      if (totalBodyHits === 0) score *= BODY_ZERO_PENALTY;
+      if (totalBodyHits === 0 && totalMemoHits === 0) {
+        score *= BODY_ZERO_PENALTY;
+      }
 
       const snippet =
         firstBodyHitPos !== null
@@ -293,6 +314,7 @@ export const tabContentSearcher: Searcher<TabSnapshot> = {
         highlights: {
           title: rangesForAllTerms(snap.title, tokens),
           subtitle: rangesForAllTerms(snap.path, tokens),
+          memo: snap.memo ? rangesForAllTerms(snap.memo, tokens) : undefined,
           snippet,
         },
       });

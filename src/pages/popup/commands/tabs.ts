@@ -11,14 +11,27 @@ const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
 const KEYWORD = "t";
 
+/** メモ取得に失敗してもタブ一覧は出したいので、空マップに落とす。 */
+async function loadMemosByTabId(): Promise<Map<number, string>> {
+  const response = await callRuntimeRpc({ name: "tabMemo.list" }).catch(
+    () => undefined
+  );
+  if (!response?.ok || !("data" in response)) return new Map();
+  return new Map(response.data.memos.map(({ tabId, text }) => [tabId, text]));
+}
+
 const commands = createLazyResource<Command[]>([], async () => {
-  const allTabs = await chrome.tabs.query({});
+  const [allTabs, memosByTabId] = await Promise.all([
+    chrome.tabs.query({}),
+    loadMemosByTabId(),
+  ]);
   return allTabs.map(({ title, url, id, windowId }) => {
     url ||= "";
     return {
       title: title || "Untitled",
       subtitle: niceUrl(url),
       icon: faviconURL(url),
+      memo: id === undefined ? undefined : memosByTabId.get(id),
       handler: () => {
         chrome.tabs.update(id!, { highlighted: true });
         chrome.windows.update(windowId!, { focused: true });

@@ -4,7 +4,7 @@
  * 各フィールドに「マッチした文字レンジ `[startInclusive, endExclusive][]`」を持たせる。
  * UI はこのレンジ情報を基に `<b>` などでハイライト描画する。
  *
- * - `title` / `subtitle` / `url`: 表示対象の対応テキストへのレンジ。座標は元テキスト基準。
+ * - `title` / `subtitle` / `url` / `memo`: 表示対象の対応テキストへのレンジ。座標は元テキスト基準。
  * - `snippet`: 周辺テキストの抜粋本体と、その抜粋文字列内のマッチレンジ。
  *
  * いずれも省略可能。省略されたフィールドはハイライト無しでそのまま表示される。
@@ -22,6 +22,7 @@ export type HighlightSpec = {
   title?: HighlightRanges;
   subtitle?: HighlightRanges;
   url?: HighlightRanges;
+  memo?: HighlightRanges;
   snippet?: SnippetData;
 };
 
