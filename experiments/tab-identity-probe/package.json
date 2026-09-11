@@ -1,0 +1,9 @@
+{
+  "name": "tab-identity-probe",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "sessionStorage によるタブ同一性保持が成立するかの実機検証",
+  "scripts": { "probe": "node run-probe.js" },
+  "devDependencies": { "playwright": "^1.63.0" }
+}
