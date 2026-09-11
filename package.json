@@ -20,13 +20,12 @@
     "start:prod": "vite build --watch",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test:tab-retention": "TS_NODE_TRANSPILE_ONLY=true node --loader ts-node/esm --test src/pages/tab-retention/policy.test.ts",
     "lint": "eslint . --fix -c .eslintrc --ext js,ts,jsx,tsx --ignore-pattern='!.*'",
     "format": "prettier . --write",
     "dev:nodemon": "nodemon",
     "analyse-bundle": "npx vite-bundle-visualizer",
     "upgrade-deps": "npx npm-upgrade",
-    "test": "jest"
+    "test": "TS_NODE_TRANSPILE_ONLY=true node --loader ts-node/esm --test \"src/**/*.test.ts\""
   },
   "type": "module",
   "dependencies": {
