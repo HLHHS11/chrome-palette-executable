@@ -7,4 +7,5 @@ export type {
   TabRetentionLaunchIntent,
   TabRetentionOverview,
   TabRetentionTabItem,
+  UnmatchedManualProtection,
 } from "./types";

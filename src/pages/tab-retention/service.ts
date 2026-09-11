@@ -1,3 +1,4 @@
+import { ManualProtectionStore } from "./manual-protection-store";
 import {
   TAB_RETENTION_POLICY,
   applyUsageProtection,
@@ -33,7 +34,10 @@ function hasTabId(tab: chrome.tabs.Tab): tab is IdentifiedTab {
 export class TabRetentionService {
   private pendingOperation: Promise<void> = Promise.resolve();
 
-  constructor(private readonly storage: ChromeTabRetentionStorage) {}
+  constructor(
+    private readonly storage: ChromeTabRetentionStorage,
+    private readonly manualProtection: ManualProtectionStore = new ManualProtectionStore()
+  ) {}
 
   private queueOperation<T>(operation: () => Promise<T>): Promise<T> {
     const result = this.pendingOperation.then(operation, operation);
@@ -158,6 +162,33 @@ export class TabRetentionService {
     };
   }
 
+  /**
+   * 旧形式で保存されていた明示保持をストアへ移す。
+   *
+   * 旧形式では「保持中の URL」が 2 か所に散っていた: 前のセッションのレコードと、
+   * 復元できなかった URL の配列。どちらも URL しか手がかりが無いので、宙に浮いた
+   * 宣言としてまとめて預け、タブへの結びつけは直後の rematch に任せる。
+   *
+   * 前セッションのレコードは tabId で引けるが、ブラウザ再起動後の tabId は
+   * 別のタブを指しうるので、ここでは絶対に使わない。
+   */
+  private async migrateLegacyManualProtection(
+    state: TabRetentionState,
+    now: number
+  ): Promise<void> {
+    const legacyUrls = new Set(state.unmatchedManualUrls);
+    for (const record of state.records.values()) {
+      if (record.retention !== "manual-protected" || !record.urlSnapshot) {
+        continue;
+      }
+      legacyUrls.add(record.urlSnapshot);
+    }
+    if (legacyUrls.size === 0) return;
+
+    await this.manualProtection.seedFromLegacyUrls([...legacyUrls], now);
+    state.unmatchedManualUrls = [];
+  }
+
   private async initializeSession(now: number): Promise<void> {
     const existingRuntime = await this.storage.loadRuntime();
     const tabs = await this.queryManagedTabs();
@@ -180,33 +211,16 @@ export class TabRetentionService {
     }
 
     // tabId はブラウザセッションを越えて安定しない。新しいセッションでは利用統計を
-    // 作り直し、一意な完全一致 URL に限って明示保持だけを引き継ぐ。
-    const manualUrls = new Set(state.unmatchedManualUrls);
-    for (const record of state.records.values()) {
-      if (record.retention !== "manual-protected" || !record.urlSnapshot) {
-        continue;
-      }
-      manualUrls.add(record.urlSnapshot);
-    }
-    const openTabsByUrl = new Map<string, IdentifiedTab[]>();
-    for (const tab of tabs) {
-      const url = tabUrl(tab);
-      const sameUrlTabs = openTabsByUrl.get(url) ?? [];
-      sameUrlTabs.push(tab);
-      openTabsByUrl.set(url, sameUrlTabs);
-    }
+    // 作り直し、明示保持の宣言だけを ManualProtectionStore 経由で引き継ぐ。
+    await this.migrateLegacyManualProtection(state, now);
+    const protectedTabIds = await this.manualProtection.rematch(tabs);
 
     state.records = new Map();
     for (const tab of tabs) {
       const record = this.createRecord(tab, now);
-      const url = tabUrl(tab);
-      if (url && manualUrls.has(url) && openTabsByUrl.get(url)?.length === 1) {
-        record.retention = "manual-protected";
-        manualUrls.delete(url);
-      }
+      if (protectedTabIds.has(tab.id)) record.retention = "manual-protected";
       state.records.set(tab.id, record);
     }
-    state.unmatchedManualUrls = Array.from(manualUrls);
 
     const idleState = await chrome.idle.queryState(
       TAB_RETENTION_POLICY.idleDetectionSeconds
@@ -326,18 +340,20 @@ export class TabRetentionService {
     });
   }
 
-  recordTabRemoved(tabId: number, isWindowClosing: boolean): Promise<void> {
+  /**
+   * ブラウザ終了もウィンドウを閉じる操作として通知されるが、宣言を残して
+   * 結びつきだけを解く扱いに統一したので、両者を区別する必要はない。
+   */
+  recordTabRemoved(tabId: number): Promise<void> {
     return this.queueOperation(async () => {
       const [state, runtime] = await Promise.all([
         this.storage.loadPersistent(),
         this.storage.loadRuntime(),
       ]);
-      const removedRecord = state.records.get(tabId);
-      // ブラウザ終了も window closing として通知されるため、明示保持の URL は次回起動時の
-      // best-effort 復元用に残す。同一セッションで閉じたウィンドウの残骸は次回照合で消える。
-      if (!isWindowClosing || removedRecord?.retention !== "manual-protected") {
-        state.records.delete(tabId);
-      }
+      state.records.delete(tabId);
+      // 明示保持の宣言そのものは残し、結びつきだけ解く。復元されれば結び直せる。
+      // ブラウザ終了も window closing として通知されるため、ここで捨ててはいけない。
+      await this.manualProtection.detach(tabId);
       if (runtime?.foregroundTabId === tabId) {
         delete runtime.foregroundTabId;
         delete runtime.foregroundStartedAt;
@@ -353,6 +369,9 @@ export class TabRetentionService {
       const record = state.records.get(tabId);
       if (!record) return;
       record.urlSnapshot = url;
+      // 再結合の手がかりを新鮮に保つ。保持していないタブなら何も起きない。
+      const tab = await chrome.tabs.get(tabId).catch(() => undefined);
+      if (tab && hasTabId(tab)) await this.manualProtection.syncBinding(tab);
       await this.storage.savePersistent(state);
     });
   }
@@ -375,6 +394,9 @@ export class TabRetentionService {
         state.records.set(addedTabId, previous);
       } else if (hasTabId(addedTab) && !addedTab.incognito) {
         state.records.set(addedTabId, this.createRecord(addedTab, Date.now()));
+      }
+      if (hasTabId(addedTab)) {
+        await this.manualProtection.transfer(removedTabId, addedTab);
       }
       if (runtime?.foregroundTabId === removedTabId) {
         runtime.foregroundTabId = addedTabId;
@@ -412,9 +434,11 @@ export class TabRetentionService {
           runtime.foregroundStartedAt = now;
         }
       }
-      state.unmatchedManualUrls = state.unmatchedManualUrls.filter(
-        (url) => url !== record.urlSnapshot
-      );
+      if (retention === "manual-protected") {
+        await this.manualProtection.protect(tab, now);
+      } else {
+        await this.manualProtection.release(tabId);
+      }
 
       await this.storage.savePersistent(state);
       if (runtime) await this.storage.saveRuntime(runtime);
@@ -422,17 +446,21 @@ export class TabRetentionService {
     });
   }
 
-  // 明示保持は「この URL は重要」という宣言であり、タブが失われても宣言は残る。開き直す
+  // 明示保持は「このページは重要」という宣言であり、タブが失われても宣言は残る。開き直す
   // 操作でその宣言を実体のあるタブへ結び直す。
-  reopenUnmatchedManualUrl(url: string): Promise<void> {
+  reopenUnmatchedManualProtection(
+    recordId: string,
+    url: string
+  ): Promise<void> {
     return this.queueOperation(async () => {
       const now = Date.now();
       const [state, tabs] = await Promise.all([
         this.storage.loadPersistent(),
         this.queryManagedTabs(),
       ]);
-      // 同じ URL のタブが複数開いていて一意に決められなかった場合も含め、既に開いて
-      // いるならそれを明示保持の実体とみなし、重複したタブを増やさない。
+      // 同じ URL のタブが既に開いているなら、それを宣言の実体とみなして
+      // 重複したタブを増やさない。どれを選ぶかはユーザーがこの行を選んだ時点の
+      // 意思表示なので、先頭の 1 つで構わない。
       const target =
         tabs.find((tab) => tabUrl(tab) === url) ??
         (await chrome.tabs.create({ url, active: true }));
@@ -445,20 +473,17 @@ export class TabRetentionService {
       const record = this.ensureRecord(state, target, now);
       record.retention = "manual-protected";
       delete record.autoProtectionReason;
-      state.unmatchedManualUrls = state.unmatchedManualUrls.filter(
-        (candidate) => candidate !== url
-      );
+      // 宙に浮いていた宣言をこのタブが引き取る。取れなかった (既に他のタブが
+      // 引き取っていた) 場合でも、このタブ自身の保持は宣言し直しておく。
+      const adopted = await this.manualProtection.adopt(recordId, target.id);
+      if (!adopted) await this.manualProtection.protect(target, now);
       await this.storage.savePersistent(state);
     });
   }
 
-  forgetUnmatchedManualUrl(url: string): Promise<void> {
+  forgetUnmatchedManualProtection(recordId: string): Promise<void> {
     return this.queueOperation(async () => {
-      const state = await this.storage.loadPersistent();
-      state.unmatchedManualUrls = state.unmatchedManualUrls.filter(
-        (candidate) => candidate !== url
-      );
-      await this.storage.savePersistent(state);
+      await this.manualProtection.forget(recordId);
     });
   }
 
@@ -519,7 +544,7 @@ export class TabRetentionService {
         observeOnlyUntil: featureEnabledAt + TAB_RETENTION_POLICY.observeOnlyMs,
         tabs: items,
         recentlyDeleted: state.deletedTabs,
-        unmatchedManualUrls: state.unmatchedManualUrls,
+        unmatchedManual: await this.manualProtection.listUnmatched(),
       };
     });
   }

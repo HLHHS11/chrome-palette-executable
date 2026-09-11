@@ -8,6 +8,7 @@ import type {
   TabRetention,
   TabRetentionCategory,
   TabRetentionTabItem,
+  UnmatchedManualProtection,
 } from "@pages/tab-retention";
 import {
   For,
@@ -27,7 +28,7 @@ type TabRow = { kind: "tab"; item: TabRetentionTabItem };
 type DeletedRow = { kind: "deleted"; item: AutoDeletedTabRecord };
 type UnmatchedManualRow = {
   kind: "unmatched-manual";
-  item: { url: string };
+  item: UnmatchedManualProtection;
 };
 type ViewRow = TabRow | DeletedRow | UnmatchedManualRow;
 
@@ -175,12 +176,14 @@ export default function TabRetentionView(props: {
     if (currentCategory !== "manual") return liveRows;
     return [
       ...liveRows,
-      ...current.unmatchedManualUrls
-        .filter((url) => url.toLowerCase().includes(normalizedQuery))
+      ...current.unmatchedManual
+        .filter((item) =>
+          `${item.title}\n${item.url}`.toLowerCase().includes(normalizedQuery)
+        )
         .map(
-          (url): UnmatchedManualRow => ({
+          (item): UnmatchedManualRow => ({
             kind: "unmatched-manual",
-            item: { url },
+            item,
           })
         ),
     ];
@@ -207,6 +210,7 @@ export default function TabRetentionView(props: {
       if (row.kind === "unmatched-manual") {
         const response = await callBackgroundRpc({
           name: "tabRetention.reopenUnmatchedManual",
+          recordId: row.item.recordId,
           url: row.item.url,
         });
         if (!response.ok) throw new Error(response.error);
@@ -242,7 +246,7 @@ export default function TabRetentionView(props: {
         if (retention !== "normal") return;
         const response = await callBackgroundRpc({
           name: "tabRetention.forgetUnmatchedManual",
-          url: row.item.url,
+          recordId: row.item.recordId,
         });
         if (!response.ok) throw new Error(response.error);
         await refetch();
@@ -388,7 +392,7 @@ export default function TabRetentionView(props: {
       (item) => item.retention === retention
     ).length;
     return target === "manual"
-      ? liveCount + current.unmatchedManualUrls.length
+      ? liveCount + current.unmatchedManual.length
       : liveCount;
   };
 
@@ -453,7 +457,7 @@ export default function TabRetentionView(props: {
             {(row, index) => {
               const title = () =>
                 row.kind === "unmatched-manual"
-                  ? "明示保持を復元できませんでした"
+                  ? row.item.title || "明示保持を復元できませんでした"
                   : row.item.title;
               const url = () => row.item.url;
               const icon = () =>

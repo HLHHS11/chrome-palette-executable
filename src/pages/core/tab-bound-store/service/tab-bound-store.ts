@@ -113,6 +113,25 @@ export class TabBoundStore<T> {
     await this.persist(records, assignments);
   }
 
+  /**
+   * タブに結びつけずにレコードだけ作る。
+   *
+   * 「この URL は大事」という宣言が先にあり、実体のタブが後から現れる
+   * (あるいは既に失われている) 場合の入口。旧形式データの取り込みにも使う。
+   */
+  async createOrphan(value: T, binding: TabBinding): Promise<TabBoundRecordId> {
+    const [records, assignments] = await this.load();
+    const id = this.generateId();
+    records.push({ id, value, binding, updatedAt: this.now() });
+    await this.persist(records, assignments);
+    return id;
+  }
+
+  /** 結びつきの有無によらず、保持しているレコードすべて。 */
+  async allRecords(): Promise<TabBoundRecord<T>[]> {
+    return this.repository.loadRecords();
+  }
+
   /** どのタブにも結びついていないレコード。 */
   async orphans(): Promise<TabBoundRecord<T>[]> {
     const [records, assignments] = await this.load();

@@ -28,10 +28,25 @@ export type AutoDeletedTabRecord = {
   restoredAt?: number;
 };
 
+/**
+ * どのタブにも結びついていない明示保持の宣言。
+ * セッション復元で取り違えを避けて結合を諦めた分が、ここに残る。
+ */
+export type UnmatchedManualProtection = {
+  recordId: string;
+  url: string;
+  title: string;
+  protectedAt: number;
+};
+
 export type TabRetentionState = {
   featureEnabledAt: number | null;
   records: Map<number, TabRetentionRecord>;
   deletedTabs: AutoDeletedTabRecord[];
+  /**
+   * 旧形式の置き場所。現在の正は `ManualProtectionStore`。
+   * 起動時に一度だけストアへ移し替え、以後は常に空で書き戻される。
+   */
   unmatchedManualUrls: string[];
 };
 
@@ -88,7 +103,7 @@ export type TabRetentionOverview = {
   observeOnlyUntil: number;
   tabs: TabRetentionTabItem[];
   recentlyDeleted: AutoDeletedTabRecord[];
-  unmatchedManualUrls: string[];
+  unmatchedManual: UnmatchedManualProtection[];
 };
 
 export type TabRetentionCategory = "closing" | "auto" | "manual" | "deleted";

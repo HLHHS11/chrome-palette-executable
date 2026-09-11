@@ -25,7 +25,7 @@
     "dev:nodemon": "nodemon",
     "analyse-bundle": "npx vite-bundle-visualizer",
     "upgrade-deps": "npx npm-upgrade",
-    "test": "TS_NODE_TRANSPILE_ONLY=true node --loader ts-node/esm --test \"src/**/*.test.ts\""
+    "test": "TS_NODE_TRANSPILE_ONLY=true node --loader ts-node/esm --loader ./scripts/tsconfig-alias-loader.mjs --test \"src/**/*.test.ts\""
   },
   "type": "module",
   "dependencies": {

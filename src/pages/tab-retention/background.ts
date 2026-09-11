@@ -34,9 +34,9 @@ export function bindTabRetention(): void {
       .recordTabActivated(info)
       .catch((error) => reportFailure("tab activation recording", error));
   });
-  chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+  chrome.tabs.onRemoved.addListener((tabId) => {
     void service
-      .recordTabRemoved(tabId, removeInfo.isWindowClosing)
+      .recordTabRemoved(tabId)
       .catch((error) => reportFailure("tab removal recording", error));
   });
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
@@ -137,18 +137,20 @@ export async function restoreAutoDeletedTab(params: {
 }
 
 export async function reopenUnmatchedManualProtection(params: {
+  recordId: string;
   url: string;
 }): Promise<RpcResponse<RpcVoidResponseBody>> {
+  if (!params.recordId) return { ok: false, error: "Invalid recordId." };
   if (!params.url) return { ok: false, error: "Invalid URL." };
-  await service.reopenUnmatchedManualUrl(params.url);
+  await service.reopenUnmatchedManualProtection(params.recordId, params.url);
   return { ok: true, data: {} };
 }
 
 export async function forgetUnmatchedManualProtection(params: {
-  url: string;
+  recordId: string;
 }): Promise<RpcResponse<RpcVoidResponseBody>> {
-  if (!params.url) return { ok: false, error: "Invalid URL." };
-  await service.forgetUnmatchedManualUrl(params.url);
+  if (!params.recordId) return { ok: false, error: "Invalid recordId." };
+  await service.forgetUnmatchedManualProtection(params.recordId);
   return { ok: true, data: {} };
 }
 

@@ -184,3 +184,43 @@ describe("TabBoundStore", () => {
     });
   });
 });
+
+describe("TabBoundStore: createOrphan", () => {
+  it("タブに結びつかないレコードを作り、孤児として取り出せる", async () => {
+    const { store } = createStore<{ label: string }>();
+
+    const id = await store.createOrphan(
+      { label: "宣言だけ先にある" },
+      binding({ url: "https://example.com/spec" })
+    );
+
+    const orphans = await store.orphans();
+    assert.deepEqual(
+      orphans.map((record) => record.id),
+      [id]
+    );
+    assert.equal(orphans[0].value.label, "宣言だけ先にある");
+  });
+
+  it("作った孤児は adoptOrphan でタブへ引き取れる", async () => {
+    const { store } = createStore<{ label: string }>();
+    const id = await store.createOrphan(
+      { label: "あとで開くページ" },
+      binding({ url: "https://example.com/spec" })
+    );
+
+    assert.equal(await store.adoptOrphan(id, 42), true);
+
+    assert.deepEqual(await store.get(42), { label: "あとで開くページ" });
+    assert.deepEqual(await store.orphans(), []);
+  });
+
+  it("既存のタブ結合には触れない", async () => {
+    const { store } = createStore<{ label: string }>();
+    await store.set(7, { label: "開いているタブのもの" }, binding({}));
+
+    await store.createOrphan({ label: "宙に浮いたもの" }, binding({}));
+
+    assert.deepEqual(await store.get(7), { label: "開いているタブのもの" });
+  });
+});
