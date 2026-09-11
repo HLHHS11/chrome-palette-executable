@@ -1,5 +1,16 @@
 import type { RpcRoute } from "@core/rpc";
 import {
+  adoptOrphanTabMemo,
+  forgetOrphanTabMemo,
+  getTabMemo,
+  listOrphanTabMemos,
+  listTabMemos,
+  removeTabMemo,
+  setTabMemoDisplayState,
+  setTabMemoText,
+  updateTabMemoLayout,
+} from "@pages/tab-memo/background";
+import {
   forgetUnmatchedManualProtection,
   listTabRetentionOverview,
   reopenUnmatchedManualProtection,
@@ -54,5 +65,41 @@ export const backgroundRoutes = [
   {
     name: "tabRetention.forgetUnmatchedManual",
     handler: forgetUnmatchedManualProtection,
+  },
+  {
+    name: "tabMemo.get",
+    handler: getTabMemo,
+  },
+  {
+    name: "tabMemo.setText",
+    handler: setTabMemoText,
+  },
+  {
+    name: "tabMemo.updateLayout",
+    handler: updateTabMemoLayout,
+  },
+  {
+    name: "tabMemo.setDisplayState",
+    handler: setTabMemoDisplayState,
+  },
+  {
+    name: "tabMemo.remove",
+    handler: removeTabMemo,
+  },
+  {
+    name: "tabMemo.list",
+    handler: listTabMemos,
+  },
+  {
+    name: "tabMemo.listOrphans",
+    handler: listOrphanTabMemos,
+  },
+  {
+    name: "tabMemo.adoptOrphan",
+    handler: adoptOrphanTabMemo,
+  },
+  {
+    name: "tabMemo.forgetOrphan",
+    handler: forgetOrphanTabMemo,
   },
 ] as const satisfies readonly RpcRoute[];
