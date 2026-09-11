@@ -82,6 +82,16 @@ function describeTab(item: TabRetentionTabItem, now: number): string {
   return reasonLabels[assessment.reason];
 }
 
+/** 削除確認では、メモを本文ごと見せる。消す前に読めないと意味がない。 */
+function buildConfirmMessage(
+  item: TabRetentionTabItem,
+  memo: string | undefined
+): string {
+  const base = `「${item.title}」を閉じます。\n${item.url}`;
+  if (!memo) return base;
+  return `${base}\n\nこのタブのメモ:\n${memo}`;
+}
+
 export default function TabRetentionView(props: {
   initialCategory: TabRetentionCategory;
 }) {
@@ -102,6 +112,18 @@ export default function TabRetentionView(props: {
     if (!("data" in response)) throw new Error(response.info);
     return response.data.overview;
   });
+
+  /** tabId -> メモ本文。一覧・検索・削除確認で共用する。 */
+  const [memos] = createResource(async () => {
+    const response = await callBackgroundRpc({ name: "tabMemo.list" });
+    if (!response.ok || !("data" in response)) return new Map<number, string>();
+    return new Map(response.data.memos.map(({ tabId, text }) => [tabId, text]));
+  });
+
+  const memoOf = (tabId: number): string | undefined => memos()?.get(tabId);
+
+  const confirmMessage = (item: TabRetentionTabItem): string =>
+    buildConfirmMessage(item, memoOf(item.tabId));
 
   const rows = createMemo<ViewRow[]>(() => {
     const current = overview();
@@ -126,7 +148,9 @@ export default function TabRetentionView(props: {
     const liveRows: ViewRow[] = current.tabs
       .filter((item) => item.retention === expectedRetention)
       .filter((item) =>
-        `${item.title}\n${item.url}`.toLowerCase().includes(normalizedQuery)
+        `${item.title}\n${item.url}\n${memoOf(item.tabId) ?? ""}`
+          .toLowerCase()
+          .includes(normalizedQuery)
       )
       .sort((a, b) => {
         if (currentCategory === "closing") {
@@ -172,6 +196,7 @@ export default function TabRetentionView(props: {
     category();
     query();
     overview();
+    memos();
     setSelectedInternal(0);
   });
 
@@ -472,6 +497,13 @@ export default function TabRetentionView(props: {
                   <div class="retention_text">
                     <div class="retention_title">{title()}</div>
                     <div class="retention_url">{url()}</div>
+                    <Show when={row.kind === "tab" && memoOf(row.item.tabId)}>
+                      {(text) => (
+                        <div class="retention_memo" title={text()}>
+                          {text()}
+                        </div>
+                      )}
+                    </Show>
                     <div class="retention_metrics">
                       {row.kind === "tab" ? (
                         <>
@@ -520,7 +552,7 @@ export default function TabRetentionView(props: {
         {(item) => (
           <ConfirmDialog
             title="タブを削除しますか？"
-            message={`「${item().title}」を閉じます。\n${item().url}`}
+            message={confirmMessage(item())}
             confirmLabel="削除"
             onConfirm={() => void deletePendingTab()}
             onCancel={cancelPendingDeletion}

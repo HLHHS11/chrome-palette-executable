@@ -1,8 +1,21 @@
 import { assignDuplicateHighlightColors } from "@core/command";
+import { createRuntimeRpcClient } from "@core/rpc";
+import type { backgroundRoutes } from "@pages/background/routes";
 
 import { faviconURL } from "~/util/favicon";
 
 import type { VerticalTabItem } from "./types";
+
+const callBackgroundRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
+
+/** メモ取得に失敗しても一覧自体は出したいので、空マップに落とす。 */
+async function loadMemosByTabId(): Promise<Map<number, string>> {
+  const response = await callBackgroundRpc({ name: "tabMemo.list" }).catch(
+    () => undefined
+  );
+  if (!response?.ok || !("data" in response)) return new Map();
+  return new Map(response.data.memos.map(({ tabId, text }) => [tabId, text]));
+}
 
 function pickTabNumberForIndex(idx: number, total: number): number | null {
   if (idx < 8) return idx + 1;
@@ -47,6 +60,7 @@ export async function collectVerticalTabs(
   const duplicateColorByUrl = assignDuplicateHighlightColors(
     visibleTabs.map((tab) => tab.url ?? "")
   );
+  const memosByTabId = await loadMemosByTabId();
 
   const items: VerticalTabItem[] = [];
   visibleTabs.forEach((tab, idx) => {
@@ -61,6 +75,7 @@ export async function collectVerticalTabs(
       shortcutNumber: pickTabNumberForIndex(idx, visibleTabs.length),
       duplicateHighlightColor: duplicateColorByUrl.get(url) ?? null,
       lastAccessed: tab.lastAccessed,
+      memo: memosByTabId.get(tab.id),
     });
   });
   return items;

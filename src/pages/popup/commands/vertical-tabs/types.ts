@@ -10,4 +10,6 @@ export type VerticalTabItem = {
   duplicateHighlightColor: DuplicateHighlightColor | null;
   /** タブが最後にアクティブだった時刻 (ms epoch)。相対時刻表示用。取得不能時は undefined。 */
   lastAccessed?: number;
+  /** そのタブに貼り付けられたメモ本文。未設定なら undefined。 */
+  memo?: string;
 };
