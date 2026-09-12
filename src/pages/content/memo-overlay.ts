@@ -3,7 +3,7 @@ import {
   type RpcVoidResponseBody,
   createRuntimeRpcClient,
 } from "@core/rpc";
-import { MEMO_FONT_SCALE } from "@pages/memo";
+import { MEMO_DEFAULT_RIGHT_MARGIN, MEMO_FONT_SCALE } from "@pages/memo";
 import type { Memo, MemoDisplayState } from "@pages/memo";
 
 import { backgroundRoutes } from "../background/routes";
@@ -261,12 +261,32 @@ function createOverlay(): OverlayHandle {
   const isEditing = (): boolean =>
     document.activeElement === host && shadow.activeElement === textarea;
 
+  /**
+   * 既定位置はビューポートを見ないと決まらないので、作った直後ではなく
+   * 初めて描くこの時点で確定させる。以後は通常の保存位置として扱う。
+   *
+   * 描く前に済ませること。`apply()` の後に動かすと、予備の座標で一瞬描かれて
+   * から飛ぶのが見えてしまう。
+   */
+  const resolvePlacement = (): boolean => {
+    if (!current?.layout.awaitingPlacement) return false;
+    const { width, height } = sizeOf(current.layout);
+    const { x, y } = initialPosition(width, height);
+    current = {
+      ...current,
+      layout: { ...current.layout, x, y, awaitingPlacement: false },
+    };
+    return true;
+  };
+
   return {
     render(memo) {
       current = memo;
       // 入力中に外部からの更新で値を差し戻すとカーソルが飛ぶので触らない。
       if (memo && !isEditing()) textarea.value = memo.text;
+      const placed = resolvePlacement();
       apply();
+      if (placed) persistLayout();
     },
     focus() {
       if (!current) return;
@@ -300,6 +320,24 @@ function clampToViewport(
     x: Math.min(Math.max(0, x), maxX),
     y: Math.min(Math.max(0, y), maxY),
   };
+}
+
+/**
+ * 初めて描くときの位置。右寄りで、高さは中央。
+ *
+ * 左上に出すと、ページ側のロゴ・ナビゲーション・パンくずと重なりやすい。
+ * 右の中ほどは本文の読み取りを邪魔しにくく、視線を上げれば目に入る。
+ */
+function initialPosition(
+  width: number,
+  height: number
+): { x: number; y: number } {
+  return clampToViewport(
+    window.innerWidth - width - MEMO_DEFAULT_RIGHT_MARGIN,
+    Math.round((window.innerHeight - height) / 2),
+    width,
+    height
+  );
 }
 
 function previewOf(text: string): string {

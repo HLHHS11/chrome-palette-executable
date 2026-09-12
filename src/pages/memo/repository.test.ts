@@ -114,3 +114,31 @@ describe("MemoRepository", () => {
     assert.equal(loadRecords.mock.calls.length, 1);
   });
 });
+
+describe("MemoRepository: 既定レイアウト", () => {
+  it("新しいメモは位置未確定の印を持つ", async () => {
+    const { repository } = createRepository();
+
+    // 「右寄り・高さは中央」はビューポートを見ないと px にできないので、
+    // background で作る時点では確定させられない。
+    assert.equal(repository.emptyMemo().layout.awaitingPlacement, true);
+  });
+
+  it("位置を確定させたメモは、印が外れたまま読み戻される", async () => {
+    stubTabs([{ id: 1 }]);
+    const { repository } = createRepository();
+    const placed = repository.emptyMemo();
+    placed.layout = {
+      ...placed.layout,
+      x: 900,
+      y: 300,
+      awaitingPlacement: false,
+    };
+    await repository.save(1, placed);
+
+    const loaded = await repository.findByTabId(1);
+
+    assert.equal(loaded?.layout.awaitingPlacement, false);
+    assert.equal(loaded?.layout.x, 900);
+  });
+});

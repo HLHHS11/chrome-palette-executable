@@ -17,6 +17,18 @@ export interface MemoLayout {
   height: number;
   fontScale: number;
   state: MemoDisplayState;
+  /**
+   * まだページ上で位置を決めていない印。
+   *
+   * 既定位置は「右寄り・高さは中央」だが、それはビューポートの寸法を
+   * 見ないと px に落とせない。メモを作るのは background なので、
+   * 実際の座標は付箋を初めて描くときにオーバーレイが確定させ、この印を外す。
+   *
+   * 省略されている場合は「既に置かれている」とみなす。この印が無かった頃の
+   * データには実座標が入っており、ユーザーが動かした位置かもしれないため、
+   * 勝手に置き直してはいけない。
+   */
+  awaitingPlacement?: boolean;
 }
 
 export interface Memo {
@@ -30,13 +42,19 @@ export interface Memo {
  * レイアウトはメモ本体と同じレコードに載せるので、保存コストは実質ゼロ。
  */
 export const MEMO_DEFAULT_LAYOUT: MemoLayout = {
+  // ビューポートを測れなかったときに使う予備の座標。通常は
+  // `awaitingPlacement` が立っているので、描画時に上書きされる。
   x: 24,
   y: 24,
   width: 280,
   height: 180,
   fontScale: 1,
   state: "normal",
+  awaitingPlacement: true,
 };
+
+/** 既定位置を決めるときに、ビューポートの右端から空ける余白 (px)。 */
+export const MEMO_DEFAULT_RIGHT_MARGIN = 24;
 
 export const MEMO_FONT_SCALE = {
   min: 0.8,
