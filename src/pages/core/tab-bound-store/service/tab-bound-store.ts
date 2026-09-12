@@ -18,6 +18,15 @@ export interface TabBoundStoreOptions<T> {
    * 省略時はすべて持ち越す。
    */
   survivesSession?: (value: T) => boolean;
+  /**
+   * どのタブにも結びついていないレコードを保持する期間 (ms)。
+   *
+   * 省略すると無期限。機能によって適切な長さが違うためフックにしてある。
+   * メモは「タブを閉じた」だけで孤児になるので、放っておくと際限なく溜まる。
+   * 一方でタブ整理の明示保持は「このページは大事」という宣言なので、
+   * 時間で捨ててはいけない。
+   */
+  orphanTtlMs?: number;
   /** テストから差し替えられるようにした ID 生成と時刻取得。 */
   generateId?: () => TabBoundRecordId;
   now?: () => number;
@@ -36,12 +45,14 @@ export interface TabBoundStoreOptions<T> {
 export class TabBoundStore<T> {
   private readonly storage: TabBoundStorage<T>;
   private readonly survivesSession: (value: T) => boolean;
+  private readonly orphanTtlMs: number | undefined;
   private readonly generateId: () => TabBoundRecordId;
   private readonly now: () => number;
 
   constructor(options: TabBoundStoreOptions<T>) {
     this.storage = options.storage;
     this.survivesSession = options.survivesSession ?? (() => true);
+    this.orphanTtlMs = options.orphanTtlMs;
     this.generateId = options.generateId ?? (() => crypto.randomUUID());
     this.now = options.now ?? (() => Date.now());
   }
@@ -153,7 +164,36 @@ export class TabBoundStore<T> {
   async orphans(): Promise<TabBoundRecord<T>[]> {
     const [records, assignments] = await this.load();
     const attached = new Set(assignments.values());
-    return records.filter((r) => !attached.has(r.id));
+    const now = this.now();
+    return records.filter(
+      (record) => !attached.has(record.id) && !this.isExpired(record, now)
+    );
+  }
+
+  /**
+   * 期限切れの孤児をストレージから消す。消した件数を返す。
+   *
+   * 読み出し (`orphans`) は期限切れを黙って除くので、表示だけならこれを
+   * 呼ばなくても正しい。こちらは保存領域を増やし続けないための後始末。
+   */
+  async pruneExpiredOrphans(): Promise<number> {
+    if (this.orphanTtlMs === undefined) return 0;
+    const [records, assignments] = await this.load();
+    const now = this.now();
+    const attached = new Set(assignments.values());
+    const kept = records.filter(
+      (record) => attached.has(record.id) || !this.isExpired(record, now)
+    );
+    if (kept.length === records.length) return 0;
+    await this.persist(kept, assignments);
+    return records.length - kept.length;
+  }
+
+  private isExpired(record: TabBoundRecord<T>, now: number): boolean {
+    if (this.orphanTtlMs === undefined) return false;
+    // 印がまだ無いレコードは、次の書き込みで now が刻まれるまで猶予する。
+    if (record.detachedAt === undefined) return false;
+    return now - record.detachedAt >= this.orphanTtlMs;
   }
 
   /** 孤児レコードをタブに手動で結びつける。曖昧で自動結合できなかったときの受け皿。 */
@@ -221,8 +261,34 @@ export class TabBoundStore<T> {
     assignments: ReadonlyMap<number, TabBoundRecordId>
   ): Promise<void> {
     await Promise.all([
-      this.storage.saveRecords(records),
+      this.storage.saveRecords(this.stampDetachment(records, assignments)),
       this.storage.saveAssignments(assignments),
     ]);
+  }
+
+  /**
+   * 結びついていないレコードに「いつ孤児になったか」を刻み、結びついた
+   * レコードからはその印を外す。
+   *
+   * 書き込み経路がひとつしかないので、ここで揃えておけば detach / rematch /
+   * adoptOrphan のどれを通っても印が食い違わない。既に印があるものは
+   * 上書きしない。孤児のまま別の理由で保存し直すたびに期限が延びてしまう。
+   */
+  private stampDetachment(
+    records: readonly TabBoundRecord<T>[],
+    assignments: ReadonlyMap<number, TabBoundRecordId>
+  ): TabBoundRecord<T>[] {
+    const attached = new Set(assignments.values());
+    const now = this.now();
+    return records.map((record) => {
+      if (attached.has(record.id)) {
+        if (record.detachedAt === undefined) return record;
+        const { detachedAt: _attached, ...rest } = record;
+        return rest;
+      }
+      return record.detachedAt === undefined
+        ? { ...record, detachedAt: now }
+        : record;
+    });
   }
 }

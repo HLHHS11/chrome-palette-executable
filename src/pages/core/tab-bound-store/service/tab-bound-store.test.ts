@@ -224,3 +224,118 @@ describe("TabBoundStore: createOrphan", () => {
     assert.deepEqual(await store.get(7), { label: "開いているタブのもの" });
   });
 });
+
+const HOUR = 60 * 60 * 1000;
+
+function createExpiringStore(orphanTtlMs: number | undefined) {
+  const storage = new InMemoryTabBoundStorage<string>();
+  let clock = now;
+  let seq = 0;
+  const store = new TabBoundStore<string>({
+    storage,
+    orphanTtlMs,
+    generateId: () => `id-${++seq}`,
+    now: () => clock,
+  });
+  return {
+    store,
+    storage,
+    advance: (ms: number) => {
+      clock += ms;
+    },
+  };
+}
+
+describe("TabBoundStore: 孤児の保持期限", () => {
+  it("期限を設けなければ、いつまでも孤児のまま残る", async () => {
+    const { store, advance } = createExpiringStore(undefined);
+    await store.set(1, "このページは大事", binding());
+    await store.detach(1);
+
+    advance(365 * 24 * HOUR);
+
+    // タブ整理の明示保持はこちら。時間で捨ててはいけない宣言。
+    assert.equal((await store.orphans()).length, 1);
+  });
+
+  it("期限を過ぎた孤児は一覧から消える", async () => {
+    const { store, advance } = createExpiringStore(24 * HOUR);
+    await store.set(1, "閉じたタブのメモ", binding());
+    await store.detach(1);
+
+    advance(23 * HOUR);
+    assert.equal((await store.orphans()).length, 1);
+
+    advance(2 * HOUR);
+    assert.deepEqual(await store.orphans(), []);
+  });
+
+  it("期限は本文の更新時刻ではなく、孤児になった時刻から測る", async () => {
+    const { store, advance } = createExpiringStore(24 * HOUR);
+    await store.set(1, "ずっと抱えているメモ", binding());
+
+    // 1 週間触らずに開きっぱなしだったタブを、いま閉じた。
+    advance(7 * 24 * HOUR);
+    await store.detach(1);
+
+    // 本文の更新時刻を起点にすると、ここで既に期限切れになってしまう。
+    // 失われて困るのは、まさにこういう長く抱えていたメモの方。
+    advance(1 * HOUR);
+    assert.equal((await store.orphans()).length, 1);
+  });
+
+  it("孤児のまま別の理由で保存し直しても、期限は延びない", async () => {
+    const { store, advance } = createExpiringStore(24 * HOUR);
+    await store.set(1, "閉じたタブのメモ", binding());
+    await store.detach(1);
+
+    advance(12 * HOUR);
+    // 無関係なタブの書き込みでも records 全体が保存し直される。
+    await store.set(2, "別のタブのメモ", binding());
+
+    advance(13 * HOUR);
+    assert.deepEqual(
+      (await store.orphans()).map((record) => record.value),
+      []
+    );
+  });
+
+  it("引き取ったメモは期限の対象から外れ、再び外れたら測り直す", async () => {
+    const { store, advance } = createExpiringStore(24 * HOUR);
+    await store.set(1, "引き取られるメモ", binding());
+    await store.detach(1);
+
+    advance(20 * HOUR);
+    assert.equal(await store.adoptOrphan("id-1", 99), true);
+
+    // 結びついている間は経過時間を数えない。
+    advance(10 * HOUR);
+    assert.equal(await store.get(99), "引き取られるメモ");
+
+    await store.detach(99);
+    advance(23 * HOUR);
+    assert.equal((await store.orphans()).length, 1);
+  });
+
+  it("期限切れは一覧から消えるだけでなく、保存領域からも消える", async () => {
+    const { store, storage, advance } = createExpiringStore(24 * HOUR);
+    await store.set(1, "捨てられるメモ", binding());
+    await store.detach(1);
+    advance(25 * HOUR);
+
+    const removed = await store.pruneExpiredOrphans();
+
+    assert.equal(removed, 1);
+    assert.deepEqual(await storage.loadRecords(), []);
+  });
+
+  it("結びついているレコードは掃除で消さない", async () => {
+    const { store, storage, advance } = createExpiringStore(24 * HOUR);
+    await store.set(1, "開いているタブのメモ", binding());
+
+    advance(365 * 24 * HOUR);
+    await store.pruneExpiredOrphans();
+
+    assert.equal((await storage.loadRecords()).length, 1);
+  });
+});

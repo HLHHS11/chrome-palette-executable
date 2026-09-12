@@ -27,6 +27,15 @@ export interface TabBinding {
 export interface TabBoundRecord<T> {
   id: TabBoundRecordId;
   value: T;
+  /**
+   * どのタブにも結びついていない状態になった時刻 (ms epoch)。結びついている間は undefined。
+   *
+   * 保持期限をここから測る。`updatedAt` から測ってはいけない。`updatedAt` は本文を
+   * 最後に書き換えた時刻なので、1 週間前に書いたきり放置していたメモが再起動時の
+   * 再結合に失敗して孤児になった瞬間、期限切れと判定されて消えてしまう。
+   * 失われて困るのは、まさにそういう長く抱えていたメモの方である。
+   */
+  detachedAt?: number;
   /** 最後に観測したタブの状態。再結合時の照合に使う。 */
   binding: TabBinding;
   updatedAt: number;

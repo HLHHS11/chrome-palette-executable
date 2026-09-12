@@ -17,6 +17,16 @@ import type { Memo, MemoLayout, MemoSummary, OrphanMemo } from "./types";
  */
 const NAMESPACE = "tab-memo.v1";
 
+/**
+ * タブから外れたメモを抱えておく期間。
+ *
+ * メモは「タブを閉じた」だけで宙に浮くので、期限が無いと閉じるたびに 1 件ずつ
+ * 積み上がって減らない。一方で短すぎると、閉じた直後に「あれ、さっきのメモ」と
+ * なったときに間に合わない。タブ整理が自動削除したタブを復元できる期間と
+ * 同じ 24 時間に揃えてある。
+ */
+const ORPHAN_TTL_MS = 24 * 60 * 60 * 1000;
+
 function bindingOf(tab: chrome.tabs.Tab): TabBinding {
   return {
     url: tab.url ?? "",
@@ -62,6 +72,7 @@ export class MemoRepository {
       storage,
       // メモはユーザーが明示的に書いたものなので、常にセッションを越えて残す。
       survivesSession: () => true,
+      orphanTtlMs: ORPHAN_TTL_MS,
     });
   }
 
@@ -113,8 +124,14 @@ export class MemoRepository {
     return summaries;
   }
 
-  /** どのタブにも結びついていないメモ。新しく触ったものを先に返す。 */
+  /**
+   * どのタブにも結びついていないメモ。新しく触ったものを先に返す。
+   *
+   * 一覧を出すついでに期限切れを片付ける。孤児はタブを閉じるたびに増えるので、
+   * 掃除の機会を専用の仕掛け (アラーム等) に頼ると、増える側だけが動き続ける。
+   */
   async listOrphans(): Promise<OrphanMemo[]> {
+    await this.store.pruneExpiredOrphans();
     const orphans = await this.store.orphans();
     return orphans
       .map((record) => ({
