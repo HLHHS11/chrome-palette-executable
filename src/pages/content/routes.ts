@@ -18,8 +18,8 @@ import {
 import { startGmailArchiveMode } from "./gmail-page-actions";
 import { exportGoogleDocsAsMarkdown } from "./google-docs-page-actions";
 import { getSelectionTextDirective } from "./link-copy-page-actions";
+import { focusMemoOverlay, refreshMemoOverlay } from "./memo-overlay";
 import { selectRovoModel, stopRovoGeneration } from "./rovo-page-actions";
-import { refreshTabMemoOverlay } from "./tab-memo-overlay";
 import {
   applyTabNumberingTitle,
   restoreTabNumberingTitle,
@@ -56,5 +56,6 @@ export const routes = [
     handler: restoreTabNumberingTitle,
   },
   { name: "tabSearch.getPageText", handler: getPageText },
-  { name: "tabMemo.refreshOverlay", handler: refreshTabMemoOverlay },
+  { name: "memo.refreshOverlay", handler: refreshMemoOverlay },
+  { name: "memo.focusOverlay", handler: focusMemoOverlay },
 ] as const satisfies readonly RpcRoute[];

@@ -6,7 +6,7 @@ import extenionsSuggestions from "./popup/commands/extensions";
 import generalSuggestions from "./popup/commands/general";
 import gmailSuggestions from "./popup/commands/gmail";
 import historySuggestions from "./popup/commands/history";
-import tabMemoSuggestions from "./popup/commands/tab-memo";
+import memoSuggestions from "./popup/commands/memo";
 import tabRetentionSuggestions from "./popup/commands/tab-retention";
 import tabSearchSuggestions from "./popup/commands/tab-search";
 import switchTabSuggestions from "./popup/commands/tabs";
@@ -30,7 +30,7 @@ export function listLegacyCommands(pageUrl: URL | undefined): LegacyCommand[] {
     ...verticalTabsSuggestions(),
     ...tabSearchSuggestions(),
     ...tabRetentionSuggestions(),
-    ...tabMemoSuggestions(),
+    ...memoSuggestions(),
     ...historySuggestions(),
     ...bookmarkSuggestions(),
     ...extenionsSuggestions(),

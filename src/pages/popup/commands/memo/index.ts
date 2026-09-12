@@ -2,15 +2,14 @@ import type { Command } from "@core/command";
 import { createRuntimeRpcClient } from "@core/rpc";
 import type { backgroundRoutes } from "@pages/background/routes";
 import { timeAgo } from "@pages/lib/time-ago";
-import type { OrphanTabMemo, TabMemo } from "@pages/tab-memo";
+import type { OrphanMemo } from "@pages/memo";
 
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../../util/favicon";
 
-export const TAB_MEMO_KEYWORD = "tm";
 /** 宙に浮いたメモ (セッション復元でタブを決めきれなかったもの) の後始末。 */
-export const TAB_MEMO_ORPHAN_KEYWORD = "tmo";
+export const MEMO_ORPHAN_KEYWORD = "mo";
 
 const callBackgroundRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
@@ -24,26 +23,13 @@ async function currentTabId(): Promise<number> {
 }
 
 /**
- * パレットはポップアップなので、開くたびに現在のタブのメモを読み直す。
- * 編集開始時に既存の本文を入力欄へ流し込むために使う。
- */
-const currentMemo = createLazyResource<TabMemo | null>(null, async () => {
-  const response = await callBackgroundRpc({
-    name: "tabMemo.get",
-    tabId: await currentTabId(),
-  });
-  if (!response.ok || !("data" in response)) return null;
-  return response.data.memo;
-});
-
-/**
  * 復元時に「どのタブのメモか決めきれなかった」ものの一覧。
  *
  * URL が同じタブが複数あるとき、`@core/tab-bound-store` はあえて推測せずに
  * 結合を諦める。その行き場を与えるのがこのコマンド群。
  */
-const orphans = createLazyResource<OrphanTabMemo[]>([], async () => {
-  const response = await callBackgroundRpc({ name: "tabMemo.listOrphans" });
+const orphans = createLazyResource<OrphanMemo[]>([], async () => {
+  const response = await callBackgroundRpc({ name: "memo.listOrphans" });
   if (!response.ok || !("data" in response)) return [];
   return response.data.orphans;
 });
@@ -63,75 +49,40 @@ async function run(action: () => Promise<void>): Promise<void> {
   }
 }
 
-async function saveMemo(text: string): Promise<void> {
+/**
+ * 付箋を編集できる状態にして、そこへカーソルを移す。
+ *
+ * 本文の入力欄をパレットのポップアップに置く意味はない。ポップアップは
+ * 用が済めば閉じるものなので、書く場所はページ上の付箋そのものが自然。
+ * 付箋が無ければ空のまま作って、そこにカーソルを置く。
+ */
+async function editMemo(): Promise<void> {
   const response = await callBackgroundRpc({
-    name: "tabMemo.setText",
+    name: "memo.edit",
     tabId: await currentTabId(),
-    text,
   });
   if (!response.ok) throw new Error(response.error);
 }
 
 async function removeMemo(): Promise<void> {
   const response = await callBackgroundRpc({
-    name: "tabMemo.remove",
+    name: "memo.remove",
     tabId: await currentTabId(),
   });
   if (!response.ok) throw new Error(response.error);
 }
 
-async function setDisplayState(
-  state: "minimized" | "normal" | "expanded"
-): Promise<void> {
+async function toggleSize(): Promise<void> {
   const response = await callBackgroundRpc({
-    name: "tabMemo.setDisplayState",
+    name: "memo.toggleSize",
     tabId: await currentTabId(),
-    state,
   });
   if (!response.ok) throw new Error(response.error);
-}
-
-/**
- * `tm>` に続けて入力した文字列がそのままメモ本文になる。
- *
- * ページ側には追加ボタンを置かない方針なので、ここがメモを作る唯一の入口。
- */
-function editingCommands(query: string): Command[] {
-  const memo = currentMemo();
-  const text = query.trim();
-
-  if (text.length === 0) {
-    const existing = memo?.text ?? "";
-    return [
-      {
-        title:
-          existing.length > 0
-            ? "続けて入力するとメモを上書きします"
-            : "続けて入力するとメモを作成します",
-        subtitle:
-          existing.length > 0
-            ? `現在のメモ: ${existing}`
-            : "このタブに紐づきます",
-        icon: faviconURL("about:blank"),
-      },
-    ];
-  }
-
-  return [
-    {
-      title: `メモを保存: ${text}`,
-      subtitle: memo
-        ? "既存のメモを上書きします"
-        : "このタブにメモを作成します",
-      icon: faviconURL("about:blank"),
-      handler: () => void run(() => saveMemo(text)),
-    },
-  ];
 }
 
 async function adoptOrphan(recordId: string): Promise<void> {
   const response = await callBackgroundRpc({
-    name: "tabMemo.adoptOrphan",
+    name: "memo.adoptOrphan",
     recordId,
     tabId: await currentTabId(),
   });
@@ -140,7 +91,7 @@ async function adoptOrphan(recordId: string): Promise<void> {
 
 async function forgetOrphan(recordId: string): Promise<void> {
   const response = await callBackgroundRpc({
-    name: "tabMemo.forgetOrphan",
+    name: "memo.forgetOrphan",
     recordId,
   });
   if (!response.ok) throw new Error(response.error);
@@ -162,18 +113,12 @@ function orphanCommands(): Command[] {
     ];
   }
 
-  // 引き継ぎ先のタブに既にメモがあると、そちらが押し出されて孤児に戻る。
-  // 消えはしないが黙って画面から消えるので、行の時点で断っておく。
-  const displaced = currentMemo()?.text;
-
   return list.flatMap((orphan): Command[] => {
     const origin = `元: ${orphan.title || orphan.url} · ${timeAgo(orphan.updatedAt)}`;
     return [
       {
         title: `現在のタブに引き継ぐ: ${previewOf(orphan.text)}`,
-        subtitle: displaced
-          ? `${origin} / 今のメモ「${previewOf(displaced)}」は一覧に戻ります`
-          : origin,
+        subtitle: origin,
         memo: orphan.text,
         icon: faviconURL(orphan.url),
         handler: () => void run(() => adoptOrphan(orphan.recordId)),
@@ -191,35 +136,22 @@ function orphanCommands(): Command[] {
 
 const entryCommands: Command[] = [
   {
-    title: "Tab Memo: Write Memo for Current Tab",
-    subtitle: "このタブにメモを書く / 上書きする",
-    keyword: `${TAB_MEMO_KEYWORD}>`,
+    title: "Memo: Edit Memo",
+    subtitle: "このタブの付箋にカーソルを移す (無ければ作る)",
     icon: faviconURL("about:blank"),
-    handler: () => setInput(`${TAB_MEMO_KEYWORD}>`),
+    handler: () => void run(editMemo),
   },
   {
-    title: "Tab Memo: Remove Memo from Current Tab",
+    title: "Memo: Toggle Memo Size",
+    subtitle: "付箋を最小化する / 元の大きさに戻す",
+    icon: faviconURL("about:blank"),
+    handler: () => void run(toggleSize),
+  },
+  {
+    title: "Memo: Remove Memo",
     subtitle: "このタブのメモを削除する",
     icon: faviconURL("about:blank"),
     handler: () => void run(removeMemo),
-  },
-  {
-    title: "Tab Memo: Minimize Memo",
-    subtitle: "つまみだけ残して折りたたむ",
-    icon: faviconURL("about:blank"),
-    handler: () => void run(() => setDisplayState("minimized")),
-  },
-  {
-    title: "Tab Memo: Expand Memo",
-    subtitle: "大きめの表示に切り替える",
-    icon: faviconURL("about:blank"),
-    handler: () => void run(() => setDisplayState("expanded")),
-  },
-  {
-    title: "Tab Memo: Restore Memo Size",
-    subtitle: "通常の大きさに戻す",
-    icon: faviconURL("about:blank"),
-    handler: () => void run(() => setDisplayState("normal")),
   },
 ];
 
@@ -232,19 +164,18 @@ function orphanEntryCommands(): Command[] {
   if (count === 0) return [];
   return [
     {
-      title: `Tab Memo: Resolve Orphaned Memos (${count})`,
+      title: `Memo: Resolve Orphaned Memos (${count})`,
       subtitle: "再起動でタブを決めきれなかったメモを引き継ぐ / 破棄する",
-      keyword: `${TAB_MEMO_ORPHAN_KEYWORD}>`,
+      keyword: `${MEMO_ORPHAN_KEYWORD}>`,
       icon: faviconURL("about:blank"),
-      handler: () => setInput(`${TAB_MEMO_ORPHAN_KEYWORD}>`),
+      handler: () => setInput(`${MEMO_ORPHAN_KEYWORD}>`),
     },
   ];
 }
 
-export default function tabMemoSuggestions(): Command[] {
-  const { isMatch, isCommand, query } = matchCommand(TAB_MEMO_KEYWORD);
-  if (isMatch) return editingCommands(query);
-  if (matchCommand(TAB_MEMO_ORPHAN_KEYWORD).isMatch) return orphanCommands();
+export default function memoSuggestions(): Command[] {
+  const { isMatch, isCommand } = matchCommand(MEMO_ORPHAN_KEYWORD);
+  if (isMatch) return orphanCommands();
   if (isCommand) return [];
   return [...entryCommands, ...orphanEntryCommands()];
 }

@@ -3,8 +3,8 @@ import {
   type RpcVoidResponseBody,
   createRuntimeRpcClient,
 } from "@core/rpc";
-import { TAB_MEMO_EXPANDED_SIZE, TAB_MEMO_FONT_SCALE } from "@pages/tab-memo";
-import type { TabMemo, TabMemoDisplayState } from "@pages/tab-memo";
+import { MEMO_FONT_SCALE } from "@pages/memo";
+import type { Memo, MemoDisplayState } from "@pages/memo";
 
 import { backgroundRoutes } from "../background/routes";
 
@@ -16,25 +16,30 @@ import { backgroundRoutes } from "../background/routes";
 //   したがってメモが存在しないタブでは、この UI は一切描画しない。
 // - 最小化は「完全に隠すこと」ではない。隠してしまうと、メモが無いのか
 //   最小化されているのかを画面から区別できなくなるため、つまみだけは残す。
+// - 保存された位置は動かさない。ウィンドウが狭まって画面外に出そうなときは
+//   表示だけを画面内に寄せる。一時的にウィンドウを縮めただけで位置が
+//   恒久的に書き換わってしまうのは、保持されている感覚を壊す。
 // - ページの CSS に汚されない / ページを汚さないように Shadow DOM に閉じ込める。
 // ---------------------------------------------------------------------------
 
 const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
-const HOST_ID = "chrome-palette-tab-memo";
+const HOST_ID = "chrome-palette-memo";
 /** レイアウトの保存は連続操作のたびに投げず、落ち着いてから 1 回だけ送る。 */
 const LAYOUT_PERSIST_DEBOUNCE_MS = 400;
 const TEXT_PERSIST_DEBOUNCE_MS = 600;
 const MINIMIZED_SIZE = { width: 168, height: 32 } as const;
 
 interface OverlayHandle {
-  render(memo: TabMemo | null): void;
+  render(memo: Memo | null): void;
+  /** 本文へカーソルを移す。パレットの「Edit Memo」からの入口。 */
+  focus(): void;
 }
 
 let handle: OverlayHandle | null = null;
 
 /** content script の初期化時に呼ぶ。メモが無ければ何も描画しない。 */
-export async function initTabMemoOverlay(): Promise<void> {
+export async function initMemoOverlay(): Promise<void> {
   const memo = await fetchMemo();
   if (memo) ensureHandle().render(memo);
 }
@@ -43,15 +48,30 @@ export async function initTabMemoOverlay(): Promise<void> {
  * background から呼ばれる RPC handler。
  * コマンドパレットでメモを作成・更新したときに、このタブの表示を更新する。
  */
-export function refreshTabMemoOverlay(): RpcResponse<RpcVoidResponseBody> {
+export function refreshMemoOverlay(): RpcResponse<RpcVoidResponseBody> {
   void fetchMemo()
     .then((memo) => ensureHandle().render(memo))
     .catch(() => undefined);
   return { ok: true, data: {} };
 }
 
-async function fetchMemo(): Promise<TabMemo | null> {
-  const res = await callRuntimeRpc({ name: "tabMemo.get" }).catch(() => null);
+/**
+ * background から呼ばれる RPC handler。
+ * パレットの「Edit Memo」で、付箋を出してそこへカーソルを移す。
+ */
+export function focusMemoOverlay(): RpcResponse<RpcVoidResponseBody> {
+  void fetchMemo()
+    .then((memo) => {
+      const overlay = ensureHandle();
+      overlay.render(memo);
+      if (memo) overlay.focus();
+    })
+    .catch(() => undefined);
+  return { ok: true, data: {} };
+}
+
+async function fetchMemo(): Promise<Memo | null> {
+  const res = await callRuntimeRpc({ name: "memo.get" }).catch(() => null);
   if (!res || !("ok" in res) || !res.ok || !("data" in res)) return null;
   return res.data.memo;
 }
@@ -81,22 +101,24 @@ function createOverlay(): OverlayHandle {
   grip.textContent = "メモ";
   const actions = document.createElement("div");
   actions.className = "actions";
-  const smaller = iconButton("A-", "文字を小さく");
-  const larger = iconButton("A+", "文字を大きく");
-  const toggleSize = iconButton("⤢", "拡大 / 元のサイズ");
-  const toggleMinimize = iconButton("—", "最小化 / 復帰");
-  actions.append(smaller, larger, toggleSize, toggleMinimize);
+  // 最小化中に出しておくのは「元の大きさに戻す」だけ。つまみの状態で
+  // 文字サイズを変えることはないし、最小化をさらに最小化することもない。
+  const smaller = iconButton("A-", "文字を小さく", "font");
+  const larger = iconButton("A+", "文字を大きく", "font");
+  const toggleMinimize = iconButton("—", "最小化");
+  actions.append(smaller, larger, toggleMinimize);
   header.append(grip, actions);
 
   const textarea = document.createElement("textarea");
   textarea.className = "body";
   textarea.spellcheck = false;
-  textarea.placeholder = "";
+  // 「Edit Memo」で空の付箋が出る流れになったので、空でも壊れて見えないようにする。
+  textarea.placeholder = "メモを入力";
 
   panel.append(header, textarea);
   shadow.appendChild(panel);
 
-  let current: TabMemo | null = null;
+  let current: Memo | null = null;
   let layoutTimer: number | null = null;
   let textTimer: number | null = null;
 
@@ -107,10 +129,24 @@ function createOverlay(): OverlayHandle {
     layoutTimer = window.setTimeout(() => {
       layoutTimer = null;
       void callRuntimeRpc({
-        name: "tabMemo.updateLayout",
+        name: "memo.updateLayout",
         layout,
       }).catch(() => undefined);
     }, LAYOUT_PERSIST_DEBOUNCE_MS);
+  };
+
+  /** その状態で実際に描く寸法。最小化中は保存寸法ではなくつまみの大きさ。 */
+  const sizeOf = (layout: Memo["layout"]): { width: number; height: number } =>
+    layout.state === "minimized"
+      ? MINIMIZED_SIZE
+      : { width: layout.width, height: layout.height };
+
+  /** 保存位置ではなく、いま実際に描かれる位置。ドラッグの起点にも使う。 */
+  const visiblePosition = (
+    layout: Memo["layout"]
+  ): { x: number; y: number } => {
+    const { width, height } = sizeOf(layout);
+    return clampToViewport(layout.x, layout.y, width, height);
   };
 
   const apply = (): void => {
@@ -118,29 +154,26 @@ function createOverlay(): OverlayHandle {
       panel.style.display = "none";
       return;
     }
-    const { x, y, width, height, fontScale, state } = current.layout;
+    const { fontScale, state } = current.layout;
+    const { width, height } = sizeOf(current.layout);
+    const { x, y } = visiblePosition(current.layout);
     panel.style.display = "flex";
     panel.dataset.state = state;
     panel.style.left = `${x}px`;
     panel.style.top = `${y}px`;
-    if (state === "minimized") {
-      panel.style.width = `${MINIMIZED_SIZE.width}px`;
-      panel.style.height = `${MINIMIZED_SIZE.height}px`;
-    } else if (state === "expanded") {
-      panel.style.width = `${TAB_MEMO_EXPANDED_SIZE.width}px`;
-      panel.style.height = `${TAB_MEMO_EXPANDED_SIZE.height}px`;
-    } else {
-      panel.style.width = `${width}px`;
-      panel.style.height = `${height}px`;
-    }
+    panel.style.width = `${width}px`;
+    panel.style.height = `${height}px`;
     textarea.style.fontSize = `${fontScale}rem`;
+    toggleMinimize.textContent = state === "minimized" ? "▣" : "—";
+    toggleMinimize.title =
+      state === "minimized" ? "元の大きさに戻す" : "最小化";
     // 最小化中でも「メモがある」ことは分かる必要があるので、
     // 本文の先頭をつまみに出しておく。
     grip.textContent = state === "minimized" ? previewOf(current.text) : "メモ";
     if (!isEditing()) textarea.value = current.text;
   };
 
-  const mutateLayout = (patch: Partial<TabMemo["layout"]>): void => {
+  const mutateLayout = (patch: Partial<Memo["layout"]>): void => {
     if (!current) return;
     current = { ...current, layout: { ...current.layout, ...patch } };
     apply();
@@ -149,21 +182,14 @@ function createOverlay(): OverlayHandle {
 
   toggleMinimize.addEventListener("click", () => {
     if (!current) return;
-    const next: TabMemoDisplayState =
+    const next: MemoDisplayState =
       current.layout.state === "minimized" ? "normal" : "minimized";
-    mutateLayout({ state: next });
-  });
-
-  toggleSize.addEventListener("click", () => {
-    if (!current) return;
-    const next: TabMemoDisplayState =
-      current.layout.state === "expanded" ? "normal" : "expanded";
     mutateLayout({ state: next });
   });
 
   const stepFontScale = (direction: 1 | -1): void => {
     if (!current) return;
-    const { min, max, step } = TAB_MEMO_FONT_SCALE;
+    const { min, max, step } = MEMO_FONT_SCALE;
     const raw = current.layout.fontScale + direction * step;
     const rounded = Math.round(raw * 10) / 10;
     mutateLayout({ fontScale: Math.min(max, Math.max(min, rounded)) });
@@ -171,15 +197,16 @@ function createOverlay(): OverlayHandle {
   larger.addEventListener("click", () => stepFontScale(1));
   smaller.addEventListener("click", () => stepFontScale(-1));
 
+  // ドラッグの起点は保存位置ではなく表示位置。画面外へ出そうで寄せて
+  // 表示しているときに掴むと、保存位置から動き始めて飛んでしまう。
+  // 掴んで動かしたぶんは、フォールバックではなくその位置として保存する。
   bindDrag(
     header,
     panel,
-    () => current?.layout ?? null,
+    () => (current ? visiblePosition(current.layout) : null),
     (x, y) => mutateLayout({ x, y })
   );
 
-  // normal 状態の手動リサイズを拾う。ResizeObserver だと状態切替でも発火するため、
-  // ユーザー操作由来の変化だけを対象にする。
   textarea.addEventListener("input", () => {
     if (!current) return;
     current = { ...current, text: textarea.value };
@@ -189,7 +216,7 @@ function createOverlay(): OverlayHandle {
     const text = textarea.value;
     textTimer = window.setTimeout(() => {
       textTimer = null;
-      void callRuntimeRpc({ name: "tabMemo.setText", text }).catch(
+      void callRuntimeRpc({ name: "memo.setText", text }).catch(
         () => undefined
       );
     }, TEXT_PERSIST_DEBOUNCE_MS);
@@ -199,6 +226,33 @@ function createOverlay(): OverlayHandle {
   for (const type of ["keydown", "keyup", "keypress"] as const) {
     textarea.addEventListener(type, (e) => e.stopPropagation());
   }
+
+  // つまみの角を引っ張っての手動リサイズ (CSS resize) を保存する。
+  // 大きさの調整は GUI の領分なので、そこで変えた寸法はそのまま保持したい。
+  //
+  // apply() は保存値そのままの寸法を書き戻すので、こちらの描画が原因の
+  // 通知では差分が出ず、ループにはならない。最小化中はつまみの寸法を
+  // 当てているだけなので対象外。
+  new ResizeObserver(() => {
+    if (!current || current.layout.state !== "normal") return;
+    const width = Math.round(panel.offsetWidth);
+    const height = Math.round(panel.offsetHeight);
+    if (width === current.layout.width && height === current.layout.height) {
+      return;
+    }
+    mutateLayout({ width, height });
+  }).observe(panel);
+
+  // ウィンドウの大きさが変わったら描き直す。保存はしないので、
+  // 元の大きさに戻れば元の位置に戻る。
+  let resizeFrame: number | null = null;
+  window.addEventListener("resize", () => {
+    if (resizeFrame !== null) return;
+    resizeFrame = window.requestAnimationFrame(() => {
+      resizeFrame = null;
+      apply();
+    });
+  });
 
   document.documentElement.appendChild(host);
 
@@ -214,6 +268,37 @@ function createOverlay(): OverlayHandle {
       if (memo && !isEditing()) textarea.value = memo.text;
       apply();
     },
+    focus() {
+      if (!current) return;
+      textarea.focus();
+      // 末尾にカーソルを置く。追記が普通で、全選択して打ち直すことは少ない。
+      const end = textarea.value.length;
+      textarea.setSelectionRange(end, end);
+    },
+  };
+}
+
+/**
+ * 保存された位置を、そのウィンドウで実際に見える位置へ寄せる。
+ *
+ * 大きなウィンドウで右寄りに置いた付箋は、ウィンドウを半分にすると
+ * 画面外へ出てしまう。そこで表示位置だけを画面内に丸める。保存値は触らない。
+ * ウィンドウが元の幅に戻れば、丸めが要らなくなって元の位置に戻る。
+ *
+ * 付箋自体がウィンドウより大きい極端な場合は 0 に寄せる。少なくとも
+ * ヘッダを掴んで動かせる状態は保てる。
+ */
+function clampToViewport(
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): { x: number; y: number } {
+  const maxX = Math.max(0, window.innerWidth - width);
+  const maxY = Math.max(0, window.innerHeight - height);
+  return {
+    x: Math.min(Math.max(0, x), maxX),
+    y: Math.min(Math.max(0, y), maxY),
   };
 }
 
@@ -223,11 +308,16 @@ function previewOf(text: string): string {
   return head.length > 14 ? `${head.slice(0, 14)}…` : head;
 }
 
-function iconButton(label: string, title: string): HTMLButtonElement {
+function iconButton(
+  label: string,
+  title: string,
+  className?: string
+): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
   button.title = title;
+  if (className) button.className = className;
   return button;
 }
 
@@ -238,31 +328,31 @@ function iconButton(label: string, title: string): HTMLButtonElement {
 function bindDrag(
   handleEl: HTMLElement,
   panel: HTMLElement,
-  readLayout: () => TabMemo["layout"] | null,
+  readOrigin: () => { x: number; y: number } | null,
   onMove: (x: number, y: number) => void
 ): void {
   handleEl.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     const target = event.target as HTMLElement;
     if (target.tagName === "BUTTON") return;
-    const layout = readLayout();
-    if (!layout) return;
+    const origin = readOrigin();
+    if (!origin) return;
 
     event.preventDefault();
     handleEl.setPointerCapture(event.pointerId);
     const startX = event.clientX;
     const startY = event.clientY;
-    const originX = layout.x;
-    const originY = layout.y;
+    const originX = origin.x;
+    const originY = origin.y;
 
     const onPointerMove = (move: PointerEvent): void => {
-      const width = panel.offsetWidth;
-      const height = panel.offsetHeight;
       // 端まで持っていってもヘッダが必ず残るようにクランプする。
-      const maxX = Math.max(0, window.innerWidth - width);
-      const maxY = Math.max(0, window.innerHeight - height);
-      const x = Math.min(maxX, Math.max(0, originX + move.clientX - startX));
-      const y = Math.min(maxY, Math.max(0, originY + move.clientY - startY));
+      const { x, y } = clampToViewport(
+        originX + move.clientX - startX,
+        originY + move.clientY - startY,
+        panel.offsetWidth,
+        panel.offsetHeight
+      );
       onMove(Math.round(x), Math.round(y));
     };
     const onPointerUp = (): void => {
@@ -339,6 +429,8 @@ function buildStyle(): HTMLStyleElement {
     /* 最小化しても消さない。つまみだけ残して存在を示す。 */
     .panel[data-state="minimized"] .body { display: none; }
     .panel[data-state="minimized"] .header { border-bottom: none; }
+    /* つまみの状態で文字サイズを変えることはない。残すのは復帰だけ。 */
+    .panel[data-state="minimized"] .actions button.font { display: none; }
     .panel[data-state="normal"] { resize: both; }
   `;
   return style;

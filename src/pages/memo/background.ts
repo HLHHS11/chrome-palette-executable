@@ -6,16 +6,10 @@ import type {
 } from "@core/rpc";
 
 import { routes as contentRoutes } from "../content/routes";
-import { TabMemoService } from "./service";
-import type {
-  OrphanTabMemo,
-  TabMemo,
-  TabMemoDisplayState,
-  TabMemoLayout,
-  TabMemoSummary,
-} from "./types";
+import { MemoService } from "./service";
+import type { Memo, MemoLayout, MemoSummary, OrphanMemo } from "./types";
 
-const service = new TabMemoService();
+const service = new MemoService();
 const callContentRpc = createTabsRpcClient<typeof contentRoutes>();
 
 /**
@@ -30,13 +24,13 @@ function isFromOwnTab(tabId: number, context: RpcHandlerContext): boolean {
 }
 
 function refreshOverlay(tabId: number): void {
-  void callContentRpc({ name: "tabMemo.refreshOverlay" }, { tabId }).catch(
+  void callContentRpc({ name: "memo.refreshOverlay" }, { tabId }).catch(
     () => undefined
   );
 }
 
 function reportFailure(phase: string, error: unknown): void {
-  console.error(`Tab memo ${phase} failed. Details:`, error);
+  console.error(`Memo ${phase} failed. Details:`, error);
 }
 
 /**
@@ -55,7 +49,7 @@ function resolveTabId(
   return resolved as number;
 }
 
-export function bindTabMemo(): void {
+export function bindMemo(): void {
   // 新しいブラウザセッションの開始時に、保持しているメモを開いているタブへ結び直す。
   chrome.runtime.onStartup.addListener(() => {
     void service
@@ -82,20 +76,20 @@ export function bindTabMemo(): void {
   });
 }
 
-export async function getTabMemo(
+export async function getMemo(
   params: { tabId?: number },
   context: RpcHandlerContext
-): Promise<RpcResponse<{ memo: TabMemo | null }>> {
+): Promise<RpcResponse<{ memo: Memo | null }>> {
   const tabId = resolveTabId(params.tabId, context);
   if (tabId === null) return { ok: false, error: "Invalid tabId." };
   const memo = await service.get(tabId);
   return { ok: true, data: { memo: memo ?? null } };
 }
 
-export async function setTabMemoText(
+export async function setMemoText(
   params: { tabId?: number; text: string },
   context: RpcHandlerContext
-): Promise<RpcResponse<{ memo: TabMemo }>> {
+): Promise<RpcResponse<{ memo: Memo }>> {
   const tabId = resolveTabId(params.tabId, context);
   if (tabId === null) return { ok: false, error: "Invalid tabId." };
   if (typeof params.text !== "string") {
@@ -108,35 +102,54 @@ export async function setTabMemoText(
   return { ok: true, data: { memo } };
 }
 
-export async function updateTabMemoLayout(
-  params: { tabId?: number; layout: Partial<TabMemoLayout> },
+export async function updateMemoLayout(
+  params: { tabId?: number; layout: Partial<MemoLayout> },
   context: RpcHandlerContext
-): Promise<RpcResponse<{ memo: TabMemo | null }>> {
+): Promise<RpcResponse<{ memo: Memo | null }>> {
   const tabId = resolveTabId(params.tabId, context);
   if (tabId === null) return { ok: false, error: "Invalid tabId." };
   const memo = await service.updateLayout(tabId, params.layout ?? {});
   return { ok: true, data: { memo: memo ?? null } };
 }
 
-export async function setTabMemoDisplayState(
-  params: { tabId?: number; state: TabMemoDisplayState },
+export async function toggleMemoSize(
+  params: { tabId?: number },
   context: RpcHandlerContext
-): Promise<RpcResponse<{ memo: TabMemo | null }>> {
+): Promise<RpcResponse<{ memo: Memo | null }>> {
   const tabId = resolveTabId(params.tabId, context);
   if (tabId === null) return { ok: false, error: "Invalid tabId." };
-  if (
-    params.state !== "minimized" &&
-    params.state !== "normal" &&
-    params.state !== "expanded"
-  ) {
-    return { ok: false, error: "Invalid display state." };
-  }
-  const memo = await service.setDisplayState(tabId, params.state);
+  const memo = await service.toggleMinimized(tabId);
+  if (!memo) return { ok: false, error: "このタブにはメモがありません。" };
   if (!isFromOwnTab(tabId, context)) refreshOverlay(tabId);
-  return { ok: true, data: { memo: memo ?? null } };
+  return { ok: true, data: { memo } };
 }
 
-export async function removeTabMemo(
+/**
+ * 付箋を編集できる状態にして、そこへカーソルを移す。
+ *
+ * 本文の入力はページ上の付箋で行う。パレットのポップアップは
+ * すぐ閉じてしまうので、そこに入力欄を置く意味がない。
+ */
+export async function editMemo(
+  params: { tabId?: number },
+  context: RpcHandlerContext
+): Promise<RpcResponse<{ memo: Memo }>> {
+  const tabId = resolveTabId(params.tabId, context);
+  if (tabId === null) return { ok: false, error: "Invalid tabId." };
+  const memo = await service.prepareForEditing(tabId);
+  const focused = await callContentRpc(
+    { name: "memo.focusOverlay" },
+    { tabId }
+  ).catch(() => null);
+  // content script が動いていないページ (chrome:// など) では付箋を出せない。
+  // メモ自体は保存されているので、その事実だけ伝える。
+  if (!focused) {
+    return { ok: false, error: "このページには付箋を表示できません。" };
+  }
+  return { ok: true, data: { memo } };
+}
+
+export async function removeMemo(
   params: { tabId?: number },
   context: RpcHandlerContext
 ): Promise<RpcResponse<RpcVoidResponseBody>> {
@@ -147,19 +160,19 @@ export async function removeTabMemo(
   return { ok: true, data: {} };
 }
 
-export async function listTabMemos(): Promise<
-  RpcResponse<{ memos: TabMemoSummary[] }>
+export async function listMemos(): Promise<
+  RpcResponse<{ memos: MemoSummary[] }>
 > {
   return { ok: true, data: { memos: await service.listSummaries() } };
 }
 
-export async function listOrphanTabMemos(): Promise<
-  RpcResponse<{ orphans: OrphanTabMemo[] }>
+export async function listOrphanMemos(): Promise<
+  RpcResponse<{ orphans: OrphanMemo[] }>
 > {
   return { ok: true, data: { orphans: await service.listOrphans() } };
 }
 
-export async function adoptOrphanTabMemo(
+export async function adoptOrphanMemo(
   params: { recordId: string; tabId?: number },
   context: RpcHandlerContext
 ): Promise<RpcResponse<RpcVoidResponseBody>> {
@@ -174,7 +187,7 @@ export async function adoptOrphanTabMemo(
   return { ok: true, data: {} };
 }
 
-export async function forgetOrphanTabMemo(params: {
+export async function forgetOrphanMemo(params: {
   recordId: string;
 }): Promise<RpcResponse<RpcVoidResponseBody>> {
   if (typeof params.recordId !== "string" || params.recordId.length === 0) {

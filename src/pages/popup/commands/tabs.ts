@@ -13,7 +13,7 @@ const KEYWORD = "t";
 
 /** メモ取得に失敗してもタブ一覧は出したいので、空マップに落とす。 */
 async function loadMemosByTabId(): Promise<Map<number, string>> {
-  const response = await callRuntimeRpc({ name: "tabMemo.list" }).catch(
+  const response = await callRuntimeRpc({ name: "memo.list" }).catch(
     () => undefined
   );
   if (!response?.ok || !("data" in response)) return new Map();

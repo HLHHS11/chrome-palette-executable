@@ -116,7 +116,7 @@ export default function TabRetentionView(props: {
 
   /** tabId -> メモ本文。一覧・検索・削除確認で共用する。 */
   const [memos] = createResource(async () => {
-    const response = await callBackgroundRpc({ name: "tabMemo.list" });
+    const response = await callBackgroundRpc({ name: "memo.list" });
     if (!response.ok || !("data" in response)) return new Map<number, string>();
     return new Map(response.data.memos.map(({ tabId, text }) => [tabId, text]));
   });

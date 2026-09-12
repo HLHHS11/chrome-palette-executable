@@ -5,9 +5,9 @@ import { listRpcCommands } from "../rpc-command";
 import { startChatGptNotifier } from "./chatgpt-notifier";
 import { startGeminiNotifier } from "./gemini-notifier";
 import { initGmailLatestHashNavigation } from "./gmail-latest-hash";
+import { initMemoOverlay } from "./memo-overlay";
 import { routes } from "./routes";
 import { startRovoNotifier } from "./rovo-notifier";
-import { initTabMemoOverlay } from "./tab-memo-overlay";
 import { initTabNumberingHints } from "./tab-numbering";
 
 // NOTE: 下記は公式なバージョン表記ではなく、開発中に正しく変更が正しくロードされたかチェックするためのもの
@@ -27,4 +27,4 @@ startGeminiNotifier();
 startRovoNotifier();
 initGmailLatestHashNavigation();
 initTabNumberingHints();
-void initTabMemoOverlay();
+void initMemoOverlay();

@@ -1,15 +1,16 @@
 import type { RpcRoute } from "@core/rpc";
 import {
-  adoptOrphanTabMemo,
-  forgetOrphanTabMemo,
-  getTabMemo,
-  listOrphanTabMemos,
-  listTabMemos,
-  removeTabMemo,
-  setTabMemoDisplayState,
-  setTabMemoText,
-  updateTabMemoLayout,
-} from "@pages/tab-memo/background";
+  adoptOrphanMemo,
+  editMemo,
+  forgetOrphanMemo,
+  getMemo,
+  listMemos,
+  listOrphanMemos,
+  removeMemo,
+  setMemoText,
+  toggleMemoSize,
+  updateMemoLayout,
+} from "@pages/memo/background";
 import {
   forgetUnmatchedManualProtection,
   listTabRetentionOverview,
@@ -67,39 +68,43 @@ export const backgroundRoutes = [
     handler: forgetUnmatchedManualProtection,
   },
   {
-    name: "tabMemo.get",
-    handler: getTabMemo,
+    name: "memo.get",
+    handler: getMemo,
   },
   {
-    name: "tabMemo.setText",
-    handler: setTabMemoText,
+    name: "memo.setText",
+    handler: setMemoText,
   },
   {
-    name: "tabMemo.updateLayout",
-    handler: updateTabMemoLayout,
+    name: "memo.updateLayout",
+    handler: updateMemoLayout,
   },
   {
-    name: "tabMemo.setDisplayState",
-    handler: setTabMemoDisplayState,
+    name: "memo.toggleSize",
+    handler: toggleMemoSize,
   },
   {
-    name: "tabMemo.remove",
-    handler: removeTabMemo,
+    name: "memo.edit",
+    handler: editMemo,
   },
   {
-    name: "tabMemo.list",
-    handler: listTabMemos,
+    name: "memo.remove",
+    handler: removeMemo,
   },
   {
-    name: "tabMemo.listOrphans",
-    handler: listOrphanTabMemos,
+    name: "memo.list",
+    handler: listMemos,
   },
   {
-    name: "tabMemo.adoptOrphan",
-    handler: adoptOrphanTabMemo,
+    name: "memo.listOrphans",
+    handler: listOrphanMemos,
   },
   {
-    name: "tabMemo.forgetOrphan",
-    handler: forgetOrphanTabMemo,
+    name: "memo.adoptOrphan",
+    handler: adoptOrphanMemo,
+  },
+  {
+    name: "memo.forgetOrphan",
+    handler: forgetOrphanMemo,
   },
 ] as const satisfies readonly RpcRoute[];

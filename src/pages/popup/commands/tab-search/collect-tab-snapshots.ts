@@ -10,7 +10,7 @@ const callBackgroundRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
 /** メモ取得に失敗しても本文検索は続けたいので、空マップに落とす。 */
 async function loadMemosByTabId(): Promise<Map<number, string>> {
-  const response = await callBackgroundRpc({ name: "tabMemo.list" }).catch(
+  const response = await callBackgroundRpc({ name: "memo.list" }).catch(
     () => undefined
   );
   if (!response?.ok || !("data" in response)) return new Map();
