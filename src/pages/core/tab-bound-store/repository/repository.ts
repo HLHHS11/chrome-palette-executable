@@ -1,4 +1,4 @@
-import type { TabBoundRecord, TabBoundRecordId } from "../domain/types.js";
+import type { TabBoundRecord, TabBoundRecordId } from "../domain/types";
 
 /**
  * タブ紐づけ値の永続化を抽象化するリポジトリ。

@@ -25,7 +25,7 @@
     "dev:nodemon": "nodemon",
     "analyse-bundle": "npx vite-bundle-visualizer",
     "upgrade-deps": "npx npm-upgrade",
-    "test": "TS_NODE_TRANSPILE_ONLY=true node --loader ts-node/esm --loader ./scripts/tsconfig-alias-loader.mjs --test \"src/**/*.test.ts\""
+    "test": "vitest run"
   },
   "type": "module",
   "dependencies": {
@@ -59,9 +59,9 @@
     "sass": "1.66.1",
     "solid-devtools": "^0.27.7",
     "ts-loader": "9.4.4",
-    "ts-node": "10.9.1",
     "typescript": "^5.6.2",
     "vite": "4.4.9",
-    "vite-plugin-solid": "^2.7.0"
+    "vite-plugin-solid": "^2.7.0",
+    "vitest": "^0.34"
   }
 }

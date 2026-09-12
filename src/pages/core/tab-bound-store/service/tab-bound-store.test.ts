@@ -1,9 +1,9 @@
 import { strict as assert } from "node:assert";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
-import type { TabBinding } from "../domain/types.js";
-import { InMemoryTabBoundRepository } from "../repository/in-memory-repository.js";
-import { TabBoundStore } from "./tab-bound-store.js";
+import type { TabBinding } from "../domain/types";
+import { InMemoryTabBoundRepository } from "../repository/in-memory-repository";
+import { TabBoundStore } from "./tab-bound-store";
 
 const now = 2_000_000_000_000;
 

@@ -1,12 +1,12 @@
-import { rematchRecords } from "../domain/rematch.js";
+import { rematchRecords } from "../domain/rematch";
 import type {
   RematchCandidate,
   RematchOutcome,
   TabBinding,
   TabBoundRecord,
   TabBoundRecordId,
-} from "../domain/types.js";
-import type { TabBoundRepository } from "../repository/repository.js";
+} from "../domain/types";
+import type { TabBoundRepository } from "../repository/repository";
 
 export interface TabBoundStoreOptions<T> {
   repository: TabBoundRepository<T>;

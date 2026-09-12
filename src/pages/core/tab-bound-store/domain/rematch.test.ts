@@ -1,8 +1,8 @@
 import { strict as assert } from "node:assert";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
-import { rematchRecords } from "./rematch.js";
-import type { RematchCandidate, TabBoundRecord } from "./types.js";
+import { rematchRecords } from "./rematch";
+import type { RematchCandidate, TabBoundRecord } from "./types";
 
 const now = 2_000_000_000_000;
 

@@ -1,6 +1,6 @@
 import { InMemoryTabBoundRepository } from "@core/tab-bound-store";
 import { strict as assert } from "node:assert";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { ManualProtectionStore } from "./manual-protection-store";
 import type { ManualProtection } from "./manual-protection-store";

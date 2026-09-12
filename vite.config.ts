@@ -4,13 +4,9 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import solidPlugin from "vite-plugin-solid";
 
+import { moduleAliases, popupDir } from "./config/module-aliases";
 import manifest from "./src/manifest";
 
-const root = resolve(__dirname, "src");
-const pagesDir = resolve(root, "pages");
-const coreDir = resolve(pagesDir, "core");
-const popupDir = resolve(pagesDir, "popup");
-const assetsDir = resolve(root, "assets");
 const outDir = resolve(__dirname, "dist");
 const publicDir = resolve(__dirname, "public");
 
@@ -28,11 +24,7 @@ export default defineConfig(({ command }) => {
     ],
     resolve: {
       alias: {
-        "@core": coreDir,
-        "@src": root,
-        "@assets": assetsDir,
-        "@pages": pagesDir,
-        "~": popupDir,
+        ...moduleAliases,
         "webextension-polyfill":
           command === "serve"
             ? resolve(popupDir, "util/mock-browser")

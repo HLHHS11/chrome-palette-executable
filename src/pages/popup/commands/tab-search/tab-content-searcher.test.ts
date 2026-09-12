@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
-import { tabContentSearcher } from "./tab-content-searcher.js";
-import type { TabSnapshot } from "./types.js";
+import { tabContentSearcher } from "./tab-content-searcher";
+import type { TabSnapshot } from "./types";
 
 function snapshot(overrides: Partial<TabSnapshot>): TabSnapshot {
   return {

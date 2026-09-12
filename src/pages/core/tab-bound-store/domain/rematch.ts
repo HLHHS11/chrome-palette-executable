@@ -4,7 +4,7 @@ import type {
   TabBinding,
   TabBoundRecord,
   TabBoundRecordId,
-} from "./types.js";
+} from "./types";
 
 /**
  * 照合の確からしさ。優先度は title 一致 > pinned 一致 > index の近さ。

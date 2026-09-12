@@ -1,5 +1,5 @@
-import type { TabBoundRecord, TabBoundRecordId } from "../domain/types.js";
-import type { TabBoundRepository } from "./repository.js";
+import type { TabBoundRecord, TabBoundRecordId } from "../domain/types";
+import type { TabBoundRepository } from "./repository";
 
 /** テスト用のインメモリ実装。`TabBoundStore` は永続層の差を意識しない。 */
 export class InMemoryTabBoundRepository<T> implements TabBoundRepository<T> {

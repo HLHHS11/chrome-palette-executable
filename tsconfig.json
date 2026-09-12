@@ -28,7 +28,9 @@
   "include": [
     "src",
     "utils",
+    "config",
     "vite.config.ts",
+    "vitest.config.ts",
     "node_modules/@types",
     "src/manifest.ts"
   ]

@@ -1,5 +1,5 @@
-import type { TabBoundRecord, TabBoundRecordId } from "../domain/types.js";
-import type { TabBoundRepository } from "./repository.js";
+import type { TabBoundRecord, TabBoundRecordId } from "../domain/types";
+import type { TabBoundRepository } from "./repository";
 
 /**
  * `chrome.storage.local` にレコード本体を、`chrome.storage.session` に
