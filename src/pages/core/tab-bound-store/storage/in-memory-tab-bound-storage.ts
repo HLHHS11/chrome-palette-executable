@@ -1,8 +1,8 @@
 import type { TabBoundRecord, TabBoundRecordId } from "../domain/types";
-import type { TabBoundRepository } from "./repository";
+import type { TabBoundStorage } from "./tab-bound-storage";
 
-/** テスト用のインメモリ実装。`TabBoundStore` は永続層の差を意識しない。 */
-export class InMemoryTabBoundRepository<T> implements TabBoundRepository<T> {
+/** テスト用のインメモリ実装。上の層は永続層の差を意識しない。 */
+export class InMemoryTabBoundStorage<T> implements TabBoundStorage<T> {
   private records: TabBoundRecord<T>[] = [];
   private assignments = new Map<number, TabBoundRecordId>();
 

@@ -1,5 +1,5 @@
 import type { TabBoundRecord, TabBoundRecordId } from "../domain/types";
-import type { TabBoundRepository } from "./repository";
+import type { TabBoundStorage } from "./tab-bound-storage";
 
 /**
  * `chrome.storage.local` にレコード本体を、`chrome.storage.session` に
@@ -9,9 +9,7 @@ import type { TabBoundRepository } from "./repository";
  * tabId の寿命と完全に一致するため、明示的に消す処理を書かなくても
  * 古い tabId が残り続けることがない。
  */
-export class ChromeStorageTabBoundRepository<T>
-  implements TabBoundRepository<T>
-{
+export class ChromeTabBoundStorage<T> implements TabBoundStorage<T> {
   private readonly recordsKey: string;
   private readonly assignmentsKey: string;
 

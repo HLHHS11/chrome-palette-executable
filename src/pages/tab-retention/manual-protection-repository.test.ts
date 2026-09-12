@@ -1,9 +1,9 @@
-import { InMemoryTabBoundRepository } from "@core/tab-bound-store";
+import { InMemoryTabBoundStorage } from "@core/tab-bound-store";
 import { strict as assert } from "node:assert";
 import { describe, it } from "vitest";
 
-import { ManualProtectionStore } from "./manual-protection-store";
-import type { ManualProtection } from "./manual-protection-store";
+import { ManualProtectionRepository } from "./manual-protection-repository";
+import type { ManualProtection } from "./manual-protection-repository";
 
 const now = 2_000_000_000_000;
 
@@ -20,11 +20,11 @@ function tab(overrides: Partial<Tab> & { id: number }): Tab {
 }
 
 function createStore() {
-  const repository = new InMemoryTabBoundRepository<ManualProtection>();
-  return new ManualProtectionStore(repository);
+  const repository = new InMemoryTabBoundStorage<ManualProtection>();
+  return new ManualProtectionRepository(repository);
 }
 
-describe("ManualProtectionStore", () => {
+describe("ManualProtectionRepository", () => {
   it("閉じたタブの宣言は残り、開き直せば結び直される", async () => {
     const store = createStore();
     await store.protect(tab({ id: 1, url: "https://example.com/spec" }), now);
@@ -106,7 +106,7 @@ describe("ManualProtectionStore", () => {
   });
 });
 
-describe("ManualProtectionStore: 旧形式からの移行", () => {
+describe("ManualProtectionRepository: 旧形式からの移行", () => {
   it("旧形式の URL を宙に浮いた宣言として取り込む", async () => {
     const store = createStore();
 

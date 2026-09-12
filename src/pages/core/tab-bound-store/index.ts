@@ -1,9 +1,9 @@
 export { TabBoundStore } from "./service/tab-bound-store";
 export type { TabBoundStoreOptions } from "./service/tab-bound-store";
 
-export { ChromeStorageTabBoundRepository } from "./repository/chrome-storage-repository";
-export { InMemoryTabBoundRepository } from "./repository/in-memory-repository";
-export type { TabBoundRepository } from "./repository/repository";
+export { ChromeTabBoundStorage } from "./storage/chrome-tab-bound-storage";
+export { InMemoryTabBoundStorage } from "./storage/in-memory-tab-bound-storage";
+export type { TabBoundStorage } from "./storage/tab-bound-storage";
 
 export { rematchRecords } from "./domain/rematch";
 export type {

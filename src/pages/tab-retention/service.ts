@@ -1,4 +1,4 @@
-import { ManualProtectionStore } from "./manual-protection-store";
+import { ManualProtectionRepository } from "./manual-protection-repository";
 import {
   TAB_RETENTION_POLICY,
   applyUsageProtection,
@@ -36,7 +36,7 @@ export class TabRetentionService {
 
   constructor(
     private readonly storage: ChromeTabRetentionStorage,
-    private readonly manualProtection: ManualProtectionStore = new ManualProtectionStore()
+    private readonly manualProtection: ManualProtectionRepository = new ManualProtectionRepository()
   ) {}
 
   private queueOperation<T>(operation: () => Promise<T>): Promise<T> {
@@ -211,7 +211,7 @@ export class TabRetentionService {
     }
 
     // tabId はブラウザセッションを越えて安定しない。新しいセッションでは利用統計を
-    // 作り直し、明示保持の宣言だけを ManualProtectionStore 経由で引き継ぐ。
+    // 作り直し、明示保持の宣言だけを ManualProtectionRepository 経由で引き継ぐ。
     await this.migrateLegacyManualProtection(state, now);
     const protectedTabIds = await this.manualProtection.rematch(tabs);
 

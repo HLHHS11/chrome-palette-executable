@@ -1,11 +1,8 @@
-import {
-  ChromeStorageTabBoundRepository,
-  TabBoundStore,
-} from "@core/tab-bound-store";
+import { ChromeTabBoundStorage, TabBoundStore } from "@core/tab-bound-store";
 import type {
   RematchCandidate,
   TabBinding,
-  TabBoundRepository,
+  TabBoundStorage,
 } from "@core/tab-bound-store";
 
 import type { UnmatchedManualProtection } from "./types";
@@ -29,7 +26,7 @@ export function bindingOfTab(tab: chrome.tabs.Tab): TabBinding {
 }
 
 /**
- * 明示保持の宣言を `@core/tab-bound-store` に預ける薄いラッパ。
+ * 明示保持の宣言の永続化と問い合わせを担うリポジトリ。
  *
  * 以前は「完全一致 URL のタブがちょうど 1 つのときだけ復元する」という規則で
  * セッションを越えていた。そのため参照用と編集用で同じページを 2 つ開いていると、
@@ -37,14 +34,16 @@ export function bindingOfTab(tab: chrome.tabs.Tab): TabBinding {
  * 見て突き合わせるので、この場合も取り違えずに復元できる。本当に区別が付かないときだけ
  * 宙に浮かせてユーザーに選ばせる方針は変わらない。
  */
-export class ManualProtectionStore {
+export class ManualProtectionRepository {
   private readonly store: TabBoundStore<ManualProtection>;
 
-  constructor(repository?: TabBoundRepository<ManualProtection>) {
+  constructor(
+    storage: TabBoundStorage<ManualProtection> = new ChromeTabBoundStorage(
+      NAMESPACE
+    )
+  ) {
     this.store = new TabBoundStore<ManualProtection>({
-      repository:
-        repository ??
-        new ChromeStorageTabBoundRepository<ManualProtection>(NAMESPACE),
+      storage,
       // 明示保持はユーザーの宣言なので、常にセッションを越えて残す。
       survivesSession: () => true,
     });

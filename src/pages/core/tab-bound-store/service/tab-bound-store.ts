@@ -6,10 +6,10 @@ import type {
   TabBoundRecord,
   TabBoundRecordId,
 } from "../domain/types";
-import type { TabBoundRepository } from "../repository/repository";
+import type { TabBoundStorage } from "../storage/tab-bound-storage";
 
 export interface TabBoundStoreOptions<T> {
-  repository: TabBoundRepository<T>;
+  storage: TabBoundStorage<T>;
   /**
    * 新しいブラウザセッションに持ち越す値かどうかを判定する。
    *
@@ -34,13 +34,13 @@ export interface TabBoundStoreOptions<T> {
  * 誤って別のタブに結びつけるより、宙に浮かせてユーザーに選ばせるほうが安全なため。
  */
 export class TabBoundStore<T> {
-  private readonly repository: TabBoundRepository<T>;
+  private readonly storage: TabBoundStorage<T>;
   private readonly survivesSession: (value: T) => boolean;
   private readonly generateId: () => TabBoundRecordId;
   private readonly now: () => number;
 
   constructor(options: TabBoundStoreOptions<T>) {
-    this.repository = options.repository;
+    this.storage = options.storage;
     this.survivesSession = options.survivesSession ?? (() => true);
     this.generateId = options.generateId ?? (() => crypto.randomUUID());
     this.now = options.now ?? (() => Date.now());
@@ -129,7 +129,24 @@ export class TabBoundStore<T> {
 
   /** 結びつきの有無によらず、保持しているレコードすべて。 */
   async allRecords(): Promise<TabBoundRecord<T>[]> {
-    return this.repository.loadRecords();
+    return this.storage.loadRecords();
+  }
+
+  /**
+   * いまタブに結びついているレコードを tabId 引きの形でまとめて返す。
+   *
+   * 一覧や検索は「開いている全タブ分」を欲しがる。`get` をタブごとに呼ぶと
+   * タブ数だけ読み出しが走るので、一度で済ませるための入口。
+   */
+  async attachedRecords(): Promise<Map<number, TabBoundRecord<T>>> {
+    const [records, assignments] = await this.load();
+    const byId = new Map(records.map((record) => [record.id, record]));
+    const attached = new Map<number, TabBoundRecord<T>>();
+    for (const [tabId, recordId] of assignments) {
+      const record = byId.get(recordId);
+      if (record) attached.set(tabId, record);
+    }
+    return attached;
   }
 
   /** どのタブにも結びついていないレコード。 */
@@ -169,7 +186,7 @@ export class TabBoundStore<T> {
   async rematch(
     candidates: readonly RematchCandidate[]
   ): Promise<RematchOutcome> {
-    const records = await this.repository.loadRecords();
+    const records = await this.storage.loadRecords();
     const surviving = records.filter((r) => this.survivesSession(r.value));
     const outcome = rematchRecords(surviving, candidates);
 
@@ -194,8 +211,8 @@ export class TabBoundStore<T> {
     [TabBoundRecord<T>[], Map<number, TabBoundRecordId>]
   > {
     return Promise.all([
-      this.repository.loadRecords(),
-      this.repository.loadAssignments(),
+      this.storage.loadRecords(),
+      this.storage.loadAssignments(),
     ]);
   }
 
@@ -204,8 +221,8 @@ export class TabBoundStore<T> {
     assignments: ReadonlyMap<number, TabBoundRecordId>
   ): Promise<void> {
     await Promise.all([
-      this.repository.saveRecords(records),
-      this.repository.saveAssignments(assignments),
+      this.storage.saveRecords(records),
+      this.storage.saveAssignments(assignments),
     ]);
   }
 }

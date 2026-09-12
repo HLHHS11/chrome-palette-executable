@@ -44,7 +44,7 @@ export type TabRetentionState = {
   records: Map<number, TabRetentionRecord>;
   deletedTabs: AutoDeletedTabRecord[];
   /**
-   * 旧形式の置き場所。現在の正は `ManualProtectionStore`。
+   * 旧形式の置き場所。現在の正は `ManualProtectionRepository`。
    * 起動時に一度だけストアへ移し替え、以後は常に空で書き戻される。
    */
   unmatchedManualUrls: string[];

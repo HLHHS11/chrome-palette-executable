@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, it } from "vitest";
 
 import type { TabBinding } from "../domain/types";
-import { InMemoryTabBoundRepository } from "../repository/in-memory-repository";
+import { InMemoryTabBoundStorage } from "../storage/in-memory-tab-bound-storage";
 import { TabBoundStore } from "./tab-bound-store";
 
 const now = 2_000_000_000_000;
@@ -18,15 +18,15 @@ function binding(overrides: Partial<TabBinding> = {}): TabBinding {
 }
 
 function createStore<T>(survivesSession?: (value: T) => boolean) {
-  const repository = new InMemoryTabBoundRepository<T>();
+  const storage = new InMemoryTabBoundStorage<T>();
   let seq = 0;
   const store = new TabBoundStore<T>({
-    repository,
+    storage,
     survivesSession,
     generateId: () => `id-${++seq}`,
     now: () => now,
   });
-  return { store, repository };
+  return { store, storage };
 }
 
 describe("TabBoundStore", () => {
@@ -38,12 +38,12 @@ describe("TabBoundStore", () => {
   });
 
   it("updates in place instead of creating a second record", async () => {
-    const { store, repository } = createStore<string>();
+    const { store, storage } = createStore<string>();
     await store.set(1, "初回", binding());
     await store.set(1, "書き換え", binding({ title: "変わった" }));
     assert.equal(await store.get(1), "書き換え");
-    assert.equal(repository.snapshot().records.length, 1);
-    assert.equal(repository.snapshot().records[0].binding.title, "変わった");
+    assert.equal(storage.snapshot().records.length, 1);
+    assert.equal(storage.snapshot().records[0].binding.title, "変わった");
   });
 
   it("keeps values of different tabs independent", async () => {
@@ -55,25 +55,25 @@ describe("TabBoundStore", () => {
   });
 
   it("refreshes the binding without touching the value", async () => {
-    const { store, repository } = createStore<string>();
+    const { store, storage } = createStore<string>();
     await store.set(1, "メモ", binding({ index: 0 }));
     await store.syncBinding(1, binding({ index: 7, title: "移動後" }));
     assert.equal(await store.get(1), "メモ");
-    assert.equal(repository.snapshot().records[0].binding.index, 7);
+    assert.equal(storage.snapshot().records[0].binding.index, 7);
   });
 
   it("ignores syncBinding for an unknown tab", async () => {
-    const { store, repository } = createStore<string>();
+    const { store, storage } = createStore<string>();
     await store.syncBinding(99, binding());
-    assert.equal(repository.snapshot().records.length, 0);
+    assert.equal(storage.snapshot().records.length, 0);
   });
 
   it("delete removes the record entirely", async () => {
-    const { store, repository } = createStore<string>();
+    const { store, storage } = createStore<string>();
     await store.set(1, "メモ", binding());
     await store.delete(1);
     assert.equal(await store.get(1), undefined);
-    assert.equal(repository.snapshot().records.length, 0);
+    assert.equal(storage.snapshot().records.length, 0);
   });
 
   it("detach keeps the record as an orphan", async () => {
@@ -174,13 +174,13 @@ describe("TabBoundStore", () => {
     });
 
     it("drops stale assignments from the previous session", async () => {
-      const { store, repository } = createStore<string>();
+      const { store, storage } = createStore<string>();
       await store.set(1, "メモ", binding({ url: "https://a.example/" }));
       await store.rematch([
         { tabId: 900, binding: binding({ url: "https://a.example/" }) },
       ]);
       // 旧 tabId 1 への割り当てが残っていてはいけない。
-      assert.deepEqual([...repository.snapshot().assignments.keys()], [900]);
+      assert.deepEqual([...storage.snapshot().assignments.keys()], [900]);
     });
   });
 });
