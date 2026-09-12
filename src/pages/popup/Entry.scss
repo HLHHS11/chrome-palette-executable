@@ -75,12 +75,19 @@ li.Entry {
     // 単語の途中で改行されにくいルールに差し替える。
     // 既定は 2 行クランプ、選択中行で Space 押下時に snippet_expanded が付き、解除。
     .memo {
-      opacity: 0.95;
+      // メモは網掛けで見せる。引用ブロック風の細い縦線だと埋もれてしまうため。
+      // 短いメモは文字の幅だけ、長いメモは行幅まで伸びて省略される。
+      // 行自体に重複ハイライトの色が乗ることがあるので、枠線で境界を保つ。
+      display: inline-block;
       margin-top: 3px;
-      border-left: 2px solid rgb(255 214 102 / 80%);
-      padding-left: 6px;
+      border: 1px solid var(--memo-border-color);
+      border-radius: 3px;
+      background: var(--memo-background-color);
+      padding: 1px 5px;
+      max-width: 100%;
       overflow: hidden;
-      font-weight: 300;
+      color: var(--memo-text-color);
+      font-weight: 400;
       font-size: 12px;
       line-height: 1.35;
       text-overflow: ellipsis;

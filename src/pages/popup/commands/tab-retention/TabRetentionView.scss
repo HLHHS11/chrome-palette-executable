@@ -144,11 +144,18 @@ li.TabRetentionEntry {
   }
 
   .retention_memo {
-    opacity: 0.9;
+    // メモは網掛けで見せる。引用ブロック風の細い縦線だと埋もれてしまうため。
+    // 短いメモは文字の幅だけ、長いメモは行幅まで伸びて省略される。
+    // 行自体に重複ハイライトの色が乗ることがあるので、枠線で境界を保つ。
+    display: inline-block;
     margin-top: 3px;
-    border-left: 2px solid rgb(255 214 102 / 80%);
-    padding-left: 5px;
+    border: 1px solid var(--memo-border-color);
+    border-radius: 3px;
+    background: var(--memo-background-color);
+    padding: 1px 5px;
+    max-width: 100%;
     overflow: hidden;
+    color: var(--memo-text-color);
     font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
