@@ -2,7 +2,7 @@ import type { Command } from "@core/command";
 import { createRuntimeRpcClient } from "@core/rpc";
 import type { backgroundRoutes } from "@pages/background/routes";
 import { timeAgo } from "@pages/lib/time-ago";
-import type { OrphanMemo } from "@pages/memo";
+import type { Memo, OrphanMemo } from "@pages/memo";
 
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
@@ -40,11 +40,15 @@ const orphans = createLazyResource<OrphanMemo[]>([], async () => {
   return response.data.orphans;
 });
 
-/** 一覧の 1 行に収まるように、改行を潰して先頭だけ見せる。 */
-function previewOf(text: string): string {
-  const flat = text.replace(/\s+/g, " ").trim();
-  return flat.length > 40 ? `${flat.slice(0, 40)}…` : flat;
-}
+/** 復元先のタブが今持っているメモ。押し出しの有無を伝えるために読む。 */
+const currentMemo = createLazyResource<Memo | null>(null, async () => {
+  const response = await callBackgroundRpc({
+    name: "memo.get",
+    tabId: await currentTabId(),
+  });
+  if (!response.ok || !("data" in response)) return null;
+  return response.data.memo;
+});
 
 async function run(action: () => Promise<void>): Promise<void> {
   try {
@@ -56,11 +60,11 @@ async function run(action: () => Promise<void>): Promise<void> {
 }
 
 /**
- * 付箋を編集できる状態にして、そこへカーソルを移す。
+ * メモを編集できる状態にして、そこへカーソルを移す。
  *
  * 本文の入力欄をパレットのポップアップに置く意味はない。ポップアップは
- * 用が済めば閉じるものなので、書く場所はページ上の付箋そのものが自然。
- * 付箋が無ければ空のまま作って、そこにカーソルを置く。
+ * 用が済めば閉じるものなので、書く場所はページ上のメモそのものが自然。
+ * メモが無ければ空のまま作って、そこにカーソルを置く。
  */
 async function editMemo(): Promise<void> {
   const response = await callBackgroundRpc({
@@ -104,34 +108,38 @@ async function forgetOrphan(recordId: string): Promise<void> {
 }
 
 /**
- * 孤児 1 件につき「引き継ぐ」「破棄する」の 2 行を出す。
+ * 1 件につき「復元する」「破棄する」の 2 行を出す。
  * どちらも取り返しの付き方が違うので、Enter 一発の意味を曖昧にしたくない。
+ *
+ * 本文は網掛けの行に出るので、題名では繰り返さない。
  */
 function orphanCommands(): Command[] {
   const list = orphans();
   if (list.length === 0) {
     return [
       {
-        title: "このページに引き継げるメモはありません",
-        subtitle:
-          "同じ URL で書かれ、タブとの結びつきが切れたものだけが並びます",
+        title: "復元できるメモはありません",
         icon: faviconURL("about:blank"),
       },
     ];
   }
 
+  // 復元先に既にメモがあると、そちらが押し出されて一覧に戻る。
+  // 消えはしないが黙って画面から消えるので、行の時点で断っておく。
+  const displaced = currentMemo()?.text;
+
   return list.flatMap((orphan): Command[] => {
-    const origin = `元: ${orphan.title || orphan.url} · ${timeAgo(orphan.updatedAt)}`;
+    const origin = `${orphan.title || orphan.url} · ${timeAgo(orphan.updatedAt)}`;
     return [
       {
-        title: `現在のタブに引き継ぐ: ${previewOf(orphan.text)}`,
-        subtitle: origin,
+        title: "復元する",
+        subtitle: displaced ? `${origin} · 今のメモは一覧に戻る` : origin,
         memo: orphan.text,
         icon: faviconURL(orphan.url),
         handler: () => void run(() => adoptOrphan(orphan.recordId)),
       },
       {
-        title: `破棄する: ${previewOf(orphan.text)}`,
+        title: "破棄する",
         subtitle: origin,
         memo: orphan.text,
         icon: faviconURL(orphan.url),
@@ -144,19 +152,19 @@ function orphanCommands(): Command[] {
 const entryCommands: Command[] = [
   {
     title: "Memo: Edit Memo",
-    subtitle: "このタブの付箋にカーソルを移す (無ければ作る)",
+    subtitle: "メモを編集する",
     icon: faviconURL("about:blank"),
     handler: () => void run(editMemo),
   },
   {
     title: "Memo: Toggle Memo Size",
-    subtitle: "付箋を最小化する / 元の大きさに戻す",
+    subtitle: "メモの大きさを切り替える",
     icon: faviconURL("about:blank"),
     handler: () => void run(toggleSize),
   },
   {
     title: "Memo: Remove Memo",
-    subtitle: "このタブのメモを削除する",
+    subtitle: "メモを削除する",
     icon: faviconURL("about:blank"),
     handler: () => void run(removeMemo),
   },
@@ -171,9 +179,8 @@ function orphanEntryCommands(): Command[] {
   if (count === 0) return [];
   return [
     {
-      title: `Memo: Resolve Orphaned Memos (${count})`,
-      subtitle:
-        "このページで書かれ、タブとの結びつきが切れたメモを引き継ぐ / 破棄する",
+      title: `Memo: Restore Memo (${count})`,
+      subtitle: "メモを復元する",
       keyword: `${MEMO_ORPHAN_KEYWORD}>`,
       icon: faviconURL("about:blank"),
       handler: () => setInput(`${MEMO_ORPHAN_KEYWORD}>`),

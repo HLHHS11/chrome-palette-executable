@@ -52,7 +52,7 @@ describe("MemoRepository", () => {
 
     const summaries = await repository.listAttachedSummaries();
 
-    // 空のメモは「Edit Memo で付箋を出しただけ」の状態なので検索に混ぜない。
+    // 空のメモは「Edit Memo で開いただけ」の状態なので検索に混ぜない。
     assert.deepEqual(
       summaries.sort((a, b) => a.tabId - b.tabId),
       [

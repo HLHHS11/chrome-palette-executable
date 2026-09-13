@@ -125,9 +125,9 @@ export async function toggleMemoSize(
 }
 
 /**
- * 付箋を編集できる状態にして、そこへカーソルを移す。
+ * メモを編集できる状態にして、そこへカーソルを移す。
  *
- * 本文の入力はページ上の付箋で行う。パレットのポップアップは
+ * 本文の入力はページ上のメモで行う。パレットのポップアップは
  * すぐ閉じてしまうので、そこに入力欄を置く意味がない。
  */
 export async function editMemo(
@@ -141,10 +141,10 @@ export async function editMemo(
     { name: "memo.focusOverlay" },
     { tabId }
   ).catch(() => null);
-  // content script が動いていないページ (chrome:// など) では付箋を出せない。
+  // content script が動いていないページ (chrome:// など) では表示できない。
   // メモ自体は保存されているので、その事実だけ伝える。
   if (!focused) {
-    return { ok: false, error: "このページには付箋を表示できません。" };
+    return { ok: false, error: "このページにはメモを表示できません。" };
   }
   return { ok: true, data: { memo } };
 }
