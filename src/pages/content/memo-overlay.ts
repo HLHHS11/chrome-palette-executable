@@ -22,8 +22,7 @@ import { backgroundRoutes } from "../background/routes";
 // - ページの CSS に汚されない / ページを汚さないように Shadow DOM に閉じ込める。
 //
 // このファイルに限り、画面上に描く箱そのものを「付箋」と呼ぶ。寸法や位置を
-// 語るのは箱であって中身ではないため。機能としての呼び名は「メモ」で、
-// ユーザーに見せる文言に付箋は使わない。付箋らしい見た目は表示上の都合でしかない。
+// 持つのは箱であって中身ではないため。ユーザーに見せる文言では使わない。
 // ---------------------------------------------------------------------------
 
 const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
@@ -36,7 +35,7 @@ const MINIMIZED_SIZE = { width: 168, height: 32 } as const;
 
 interface OverlayHandle {
   render(memo: Memo | null): void;
-  /** 本文へカーソルを移す。パレットの「Edit Memo」からの入口。 */
+  /** 本文へカーソルを移す。 */
   focus(): void;
 }
 
@@ -48,10 +47,7 @@ export async function initMemoOverlay(): Promise<void> {
   if (memo) ensureHandle().render(memo);
 }
 
-/**
- * background から呼ばれる RPC handler。
- * コマンドパレットでメモを作成・更新したときに、このタブの表示を更新する。
- */
+/** パレットからメモを作成・更新したときに、このタブの表示を作り直す。 */
 export function refreshMemoOverlay(): RpcResponse<RpcVoidResponseBody> {
   void fetchMemo()
     .then((memo) => ensureHandle().render(memo))
@@ -59,10 +55,7 @@ export function refreshMemoOverlay(): RpcResponse<RpcVoidResponseBody> {
   return { ok: true, data: {} };
 }
 
-/**
- * background から呼ばれる RPC handler。
- * パレットの「Edit Memo」で、付箋を出してそこへカーソルを移す。
- */
+/** 付箋を出して本文へカーソルを移す。 */
 export function focusMemoOverlay(): RpcResponse<RpcVoidResponseBody> {
   void fetchMemo()
     .then((memo) => {
@@ -105,8 +98,7 @@ function createOverlay(): OverlayHandle {
   grip.textContent = "メモ";
   const actions = document.createElement("div");
   actions.className = "actions";
-  // 最小化中に出しておくのは「元の大きさに戻す」だけ。つまみの状態で
-  // 文字サイズを変えることはないし、最小化をさらに最小化することもない。
+  // 最小化中に残すのは「元の大きさに戻す」だけ。
   const smaller = iconButton("A-", "文字を小さく", "font");
   const larger = iconButton("A+", "文字を大きく", "font");
   const toggleMinimize = iconButton("—", "最小化");
@@ -116,7 +108,7 @@ function createOverlay(): OverlayHandle {
   const textarea = document.createElement("textarea");
   textarea.className = "body";
   textarea.spellcheck = false;
-  // 「Edit Memo」で空の付箋が出る流れになったので、空でも壊れて見えないようにする。
+  // 空の付箋が出ることがあるので、その状態でも壊れて見えないようにする。
   textarea.placeholder = "メモを入力";
 
   panel.append(header, textarea);
@@ -201,9 +193,8 @@ function createOverlay(): OverlayHandle {
   larger.addEventListener("click", () => stepFontScale(1));
   smaller.addEventListener("click", () => stepFontScale(-1));
 
-  // ドラッグの起点は保存位置ではなく表示位置。画面外へ出そうで寄せて
-  // 表示しているときに掴むと、保存位置から動き始めて飛んでしまう。
-  // 掴んで動かしたぶんは、フォールバックではなくその位置として保存する。
+  // 起点は保存位置ではなく表示位置。寄せて表示している最中に掴んだとき、
+  // 保存位置から動き始めて飛ぶのを防ぐ。動かした先はそのまま保存する。
   bindDrag(
     header,
     panel,
@@ -231,12 +222,9 @@ function createOverlay(): OverlayHandle {
     textarea.addEventListener(type, (e) => e.stopPropagation());
   }
 
-  // つまみの角を引っ張っての手動リサイズ (CSS resize) を保存する。
-  // 大きさの調整は GUI の領分なので、そこで変えた寸法はそのまま保持したい。
-  //
-  // apply() は保存値そのままの寸法を書き戻すので、こちらの描画が原因の
-  // 通知では差分が出ず、ループにはならない。最小化中はつまみの寸法を
-  // 当てているだけなので対象外。
+  // 角を引っ張っての手動リサイズを保存する。描き直しは保存値どおりの寸法を
+  // 書き戻すので、自分の描画が原因の通知では差分が出ず、ループにはならない。
+  // 最小化中はつまみの寸法を当てているだけなので対象外。
   new ResizeObserver(() => {
     if (!current || current.layout.state !== "normal") return;
     const width = Math.round(panel.offsetWidth);
@@ -266,11 +254,8 @@ function createOverlay(): OverlayHandle {
     document.activeElement === host && shadow.activeElement === textarea;
 
   /**
-   * 既定位置はビューポートを見ないと決まらないので、作った直後ではなく
-   * 初めて描くこの時点で確定させる。以後は通常の保存位置として扱う。
-   *
-   * 描く前に済ませること。`apply()` の後に動かすと、予備の座標で一瞬描かれて
-   * から飛ぶのが見えてしまう。
+   * 既定位置はビューポートを見ないと決まらないので、初めて描くここで確定させる。
+   * 描く前に済ませること。後に回すと予備の座標で一瞬描かれてから飛ぶ。
    */
   const resolvePlacement = (): boolean => {
     if (!current?.layout.awaitingPlacement) return false;
@@ -305,12 +290,9 @@ function createOverlay(): OverlayHandle {
 /**
  * 保存された位置を、そのウィンドウで実際に見える位置へ寄せる。
  *
- * 大きなウィンドウで右寄りに置いた付箋は、ウィンドウを半分にすると
- * 画面外へ出てしまう。そこで表示位置だけを画面内に丸める。保存値は触らない。
- * ウィンドウが元の幅に戻れば、丸めが要らなくなって元の位置に戻る。
- *
- * 付箋自体がウィンドウより大きい極端な場合は 0 に寄せる。少なくとも
- * ヘッダを掴んで動かせる状態は保てる。
+ * 丸めるのは表示位置だけで保存値は触らない。ウィンドウが元の幅に戻れば
+ * 元の位置に戻る。付箋の方がウィンドウより大きければ 0 に寄せ、
+ * 少なくともヘッダを掴める状態は保つ。
  */
 function clampToViewport(
   x: number,

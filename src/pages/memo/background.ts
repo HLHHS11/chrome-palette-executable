@@ -12,17 +12,14 @@ import type { Memo, MemoLayout, MemoSummary, OrphanMemo } from "./types";
 const service = new MemoService();
 const callContentRpc = createTabsRpcClient<typeof contentRoutes>();
 
-/**
- * ページ上の表示を作り直させる。
- *
- * パレットからメモを作成・変更したときは、そのタブの content script が
- * 変更を知らないため明示的に伝える。`chrome://` などでは content script が
- * 動いておらず失敗するが、それは想定内なので握りつぶす。
- */
 function isFromOwnTab(tabId: number, context: RpcHandlerContext): boolean {
   return context.sender?.tab?.id === tabId;
 }
 
+/**
+ * ページ上の表示を作り直させる。パレットから変更しても、そのタブは気付けない。
+ * content script が動いていないページでは失敗するが、それは想定内。
+ */
 function refreshOverlay(tabId: number): void {
   void callContentRpc({ name: "memo.refreshOverlay" }, { tabId }).catch(
     () => undefined
@@ -35,10 +32,7 @@ function reportFailure(phase: string, error: unknown): void {
 
 /**
  * 操作対象の tabId を決める。
- *
- * content script は自分の tabId を知らないので、省略された場合は
- * メッセージの送り主のタブを対象にする。パレットなど別コンテキストから
- * 呼ぶときは明示的に渡す。
+ * content script は自分の tabId を知らないので、省略時は送り主のタブを使う。
  */
 function resolveTabId(
   tabId: number | undefined,
@@ -50,19 +44,19 @@ function resolveTabId(
 }
 
 export function bindMemo(): void {
-  // 新しいブラウザセッションの開始時に、保持しているメモを開いているタブへ結び直す。
+  // tabId は再起動を跨いで安定しないので、開き直されたタブへ結び直す。
   chrome.runtime.onStartup.addListener(() => {
     void service
       .rematchAll()
       .catch((error) => reportFailure("session rematch", error));
   });
 
-  // タブを閉じても本文は捨てない。結びつきだけ解いて孤児として残す。
+  // タブを閉じても本文は捨てない。結びつきだけ解く。
   chrome.tabs.onRemoved.addListener((tabId) => {
     void service.detach(tabId).catch((error) => reportFailure("detach", error));
   });
 
-  // 再結合の手がかりを新鮮に保つ。URL・タイトル・位置のいずれかが変わったら更新する。
+  // 再結合の手がかりを新鮮に保つ。
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (changeInfo.url === undefined && changeInfo.title === undefined) return;
     void service
@@ -126,9 +120,7 @@ export async function toggleMemoSize(
 
 /**
  * メモを編集できる状態にして、そこへカーソルを移す。
- *
- * 本文の入力はページ上のメモで行う。パレットのポップアップは
- * すぐ閉じてしまうので、そこに入力欄を置く意味がない。
+ * 入力欄はページ上に置く。パレットはすぐ閉じるので書く場所にならない。
  */
 export async function editMemo(
   params: { tabId?: number },
@@ -141,8 +133,7 @@ export async function editMemo(
     { name: "memo.focusOverlay" },
     { tabId }
   ).catch(() => null);
-  // content script が動いていないページ (chrome:// など) では表示できない。
-  // メモ自体は保存されているので、その事実だけ伝える。
+  // content script が動いていないページでは表示できない。保存自体は済んでいる。
   if (!focused) {
     return { ok: false, error: "このページにはメモを表示できません。" };
   }

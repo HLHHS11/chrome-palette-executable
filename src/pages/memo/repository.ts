@@ -9,25 +9,10 @@ import type {
 import { MEMO_DEFAULT_LAYOUT } from "./types";
 import type { Memo, MemoLayout, MemoSummary, OrphanMemo } from "./types";
 
-/**
- * スキーマ変更に備えて版を含める。
- *
- * 機能名を Memo に改めた後もキーは `tab-memo` のまま。保存済みのメモを
- * 落とさないためで、ここは API 名ではなく保存場所の識別子。
- */
+/** スキーマ変更に備えて版を含める。改名しても保存済みを落とさないよう据え置き。 */
 const NAMESPACE = "tab-memo.v1";
 
-/**
- * タブから外れたメモを抱えておく期間。
- *
- * メモは「タブを閉じた」だけで宙に浮くので、期限が無いと閉じるたびに 1 件ずつ
- * 積み上がって減らない。一方で短すぎると、閉じた直後に「あれ、さっきのメモ」と
- * なったときに間に合わない。
- *
- * 一覧に出るのは現在のタブと同じ URL のものだけなので、件数が増えても
- * 画面が荒れない。それなら短く切る理由が無いので、週をまたいで思い出せる
- * 長さにしてある。
- */
+/** タブから外れたメモを抱えておく期間。無期限だと閉じるたびに積み上がって減らない。 */
 const ORPHAN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function bindingOf(tab: chrome.tabs.Tab): TabBinding {
@@ -40,11 +25,8 @@ function bindingOf(tab: chrome.tabs.Tab): TabBinding {
 }
 
 /**
- * 保存済みレイアウトを現在の仕様に合わせて読み直す。
- *
- * 最大化を廃止したので、以前 `expanded` で保存されたメモは通常表示として扱う。
- * 読むだけの操作で保存値を書き換えはしない。次に何か更新されたときに
- * 自然と新しい値で上書きされる。
+ * 廃止した最大化状態で保存されたメモを通常表示として読む。
+ * 読むだけの操作で保存値は書き換えない。
  */
 function sanitizeLayout(layout: MemoLayout): MemoLayout {
   if (layout.state === "minimized" || layout.state === "normal") return layout;
@@ -56,14 +38,10 @@ function sanitizeMemo(memo: Memo): Memo {
 }
 
 /**
- * メモの永続化と問い合わせを担うリポジトリ。
+ * メモの永続化と問い合わせ。どのキーにどう並んでいるかは内側に閉じる。
  *
- * 「メモ」というリソースに対する入出力の語彙だけを外に出し、それが
- * `chrome.storage` のどのキーにどう並んでいるかは内側に閉じる。汎用の
- * `TabBoundStorage` を DI で受け取るので、テストではインメモリ実装に差し替えられる。
- *
- * タブとの結びつけに必要な手がかり (URL・位置・題名) は呼び出し側の関心事では
- * ないため、tabId を渡せば中で `chrome.tabs` から補う。
+ * タブとの結びつけに使う手がかり (URL・位置・題名) は呼び出し側の関心事では
+ * ないので、tabId を渡せば中でタブから補う。
  */
 export class MemoRepository {
   private readonly store: TabBoundStore<Memo>;
@@ -112,10 +90,7 @@ export class MemoRepository {
 
   /**
    * 本文のあるメモだけを、結びついている tabId 付きで返す。
-   *
-   * 一覧 UI と検索が使う。空のメモを混ぜないのは、「Edit Memo で開いた
-   * だけでまだ何も書いていない」ものが検索に引っかかっても邪魔なため。
-   * タブごとに読み出すのではなく 1 回で済ませる。
+   * 開いただけで何も書いていないものが検索に引っかかると邪魔なので除く。
    */
   async listAttachedSummaries(): Promise<MemoSummary[]> {
     const attached = await this.store.attachedRecords();
@@ -130,19 +105,10 @@ export class MemoRepository {
   /**
    * 指定した URL のタブが引き継げる、宙に浮いたメモ。新しいものを先に返す。
    *
-   * URL の完全一致で絞る。判定は `rematchRecords` と同じ規則で、あちらが
-   * 候補にした集合と一致させている。この一覧は再結合が決めきれなかったときの
-   * 手動の受け皿なので、機械が候補にすらしなかったものを人に見せても選べない。
+   * 絞り込みは自動の再結合と同じく URL の完全一致。同じサイトでも別のページ
+   * (別の会話・別の動画) は互いに無関係で、混ぜると選びたいものが埋もれる。
    *
-   * 全件を混ぜて出すと、別のページで書いたメモばかりが並んで実際に引き継ぎたい
-   * ものが埋もれる。同じサイトの別ページ (別の会話・別の動画) は互いに無関係で、
-   * 引き継ぐ意味が無い。
-   *
-   * 本文が空のものは出さない。開いただけで何も書かなかったもので、
-   * 引き継いでも破棄しても同じなので、選択肢として並べる価値がない。
-   *
-   * 一覧を出すついでに期限切れを片付ける。孤児はタブを閉じるたびに増えるので、
-   * 掃除の機会を専用の仕掛け (アラーム等) に頼ると、増える側だけが動き続ける。
+   * 増える一方にならないよう、読むついでに期限切れを片付ける。
    */
   async listOrphansForUrl(url: string): Promise<OrphanMemo[]> {
     await this.store.pruneExpiredOrphans();

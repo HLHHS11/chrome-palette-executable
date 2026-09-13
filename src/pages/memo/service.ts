@@ -16,10 +16,7 @@ function clampFontScale(scale: number): number {
 
 /**
  * メモに対する操作の意味を決める層。
- *
- * 保存場所や問い合わせ方は `MemoRepository` に委ね、ここは「本文を書いたら
- * まだ無ければ既定レイアウトで作る」「文字サイズは範囲に収める」といった
- * 振る舞いの規則だけを持つ。
+ * 保存場所や問い合わせ方には立ち入らず、振る舞いの規則だけを持つ。
  */
 export class MemoService {
   constructor(
@@ -30,10 +27,7 @@ export class MemoService {
     return this.repository.findByTabId(tabId);
   }
 
-  /**
-   * 本文を書き込む。まだメモが無いタブなら既定レイアウトで作る。
-   * コマンドパレットからの追加が唯一の入口なので、ここが作成点になる。
-   */
+  /** 本文を書き込む。まだメモが無いタブなら既定レイアウトで作る。 */
   async setText(tabId: number, text: string): Promise<Memo> {
     const current = await this.repository.findByTabId(tabId);
     const memo: Memo = { ...(current ?? this.repository.emptyMemo()), text };
@@ -75,11 +69,8 @@ export class MemoService {
   }
 
   /**
-   * 編集できる状態のメモを用意する。
-   *
-   * メモが無ければ空のまま作る。本文の入力はページ上のメモで行うので、
-   * ここで中身を受け取る必要はない。最小化されていたら通常表示に戻す
-   * (最小化されたままではカーソルを置く場所が無い)。
+   * 編集できる状態のメモを用意する。無ければ空のまま作る。
+   * 最小化されたままではカーソルを置く場所が無いので、通常表示に戻す。
    */
   async prepareForEditing(tabId: number): Promise<Memo> {
     const current = await this.repository.findByTabId(tabId);
@@ -94,10 +85,7 @@ export class MemoService {
 
   /**
    * タブを閉じたときは結びつきだけ解く。復元されれば再結合できる。
-   *
-   * ただし本文が空のメモは残さず捨てる。開いただけで何も書かなかった
-   * ものなので、抱えておく意味がない。宙に浮いたメモの一覧に空行が並ぶのを
-   * 元から防ぐ。
+   * ただし何も書かれていないメモは抱えておく意味がないので捨てる。
    */
   async detach(tabId: number): Promise<void> {
     const memo = await this.repository.findByTabId(tabId);
@@ -118,10 +106,7 @@ export class MemoService {
     return this.repository.listAttachedSummaries();
   }
 
-  /**
-   * そのタブが引き継げる、宙に浮いたメモ。
-   * 同じ URL で開かれていたものだけを返す。
-   */
+  /** そのタブが引き継げる、宙に浮いたメモ。同じ URL のものだけ。 */
   async listOrphansFor(tabId: number): Promise<OrphanMemo[]> {
     const tab = await chrome.tabs.get(tabId).catch(() => undefined);
     const url = tab?.url ?? tab?.pendingUrl;
@@ -139,7 +124,7 @@ export class MemoService {
 
   /**
    * セッション復元後にメモを開いているタブへ結び直す。
-   * 決めきれなかったものは孤児として残り、ユーザーが選べる。
+   * 決めきれなかったものは宙に浮いたまま残し、ユーザーに選ばせる。
    */
   async rematchAll(): Promise<{ matched: number; unmatched: number }> {
     const tabs = await chrome.tabs.query({});

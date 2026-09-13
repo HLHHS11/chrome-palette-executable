@@ -24,12 +24,7 @@ async function currentTabId(): Promise<number> {
 
 /**
  * このタブが引き継げる、宙に浮いたメモの一覧。
- *
- * URL が同じタブが複数あるとき、`@core/tab-bound-store` はあえて推測せずに
- * 結合を諦める。その行き場を与えるのがこのコマンド群。
- *
- * 現在のタブと同じ URL のものだけが返る。別のページで書いたメモを
- * ここへ引き継ぐことはまず無く、全部並べると実際に選びたいものが埋もれる。
+ * 再結合が取り違えを避けて諦めたものに、行き場を与えるのがこのコマンド群。
  */
 const orphans = createLazyResource<OrphanMemo[]>([], async () => {
   const response = await callBackgroundRpc({
@@ -60,11 +55,8 @@ async function run(action: () => Promise<void>): Promise<void> {
 }
 
 /**
- * メモを編集できる状態にして、そこへカーソルを移す。
- *
- * 本文の入力欄をパレットのポップアップに置く意味はない。ポップアップは
- * 用が済めば閉じるものなので、書く場所はページ上のメモそのものが自然。
- * メモが無ければ空のまま作って、そこにカーソルを置く。
+ * メモを編集できる状態にして、そこへカーソルを移す。無ければ空のまま作る。
+ * パレットはすぐ閉じるので、書く場所はページ上のメモそのものになる。
  */
 async function editMemo(): Promise<void> {
   const response = await callBackgroundRpc({
@@ -109,9 +101,7 @@ async function forgetOrphan(recordId: string): Promise<void> {
 
 /**
  * 1 件につき「復元する」「破棄する」の 2 行を出す。
- * どちらも取り返しの付き方が違うので、Enter 一発の意味を曖昧にしたくない。
- *
- * 本文は網掛けの行に出るので、題名では繰り返さない。
+ * 取り返しの付き方が違うので、Enter 一発の意味を曖昧にしたくない。
  */
 function orphanCommands(): Command[] {
   const list = orphans();
@@ -170,10 +160,7 @@ const entryCommands: Command[] = [
   },
 ];
 
-/**
- * 孤児が 0 件のときは入口ごと隠す。
- * 普段は存在しない状態なので、常設すると意味のない 1 行が居座り続ける。
- */
+/** 0 件のときは入口ごと隠す。普段は無い状態なので、常設すると邪魔なだけ。 */
 function orphanEntryCommands(): Command[] {
   const count = orphans().length;
   if (count === 0) return [];
