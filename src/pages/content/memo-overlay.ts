@@ -84,7 +84,8 @@ function createOverlay(): OverlayHandle {
   // ページのレイアウトに一切干渉しないよう、固定配置かつ文書フローの外に出す。
   host.style.cssText =
     "position:fixed;inset:0;pointer-events:none;z-index:2147483646;";
-  const shadow = host.attachShadow({ mode: "closed" });
+  // open: Vimium 等が activeElement を辿って textarea を見つけ、入力中はショートカットを抑制できるようにする。
+  const shadow = host.attachShadow({ mode: "open" });
   shadow.appendChild(buildStyle());
 
   const panel = document.createElement("div");
