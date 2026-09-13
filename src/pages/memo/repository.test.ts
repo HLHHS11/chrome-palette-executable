@@ -70,7 +70,7 @@ describe("MemoRepository", () => {
     await repository.detach(1);
 
     assert.deepEqual(await repository.listAttachedSummaries(), []);
-    const orphans = await repository.listOrphans();
+    const orphans = await repository.listOrphansForUrl("https://example.com/");
     assert.equal(orphans.length, 1);
     assert.equal(orphans[0].text, "消えては困る");
     assert.equal(orphans[0].title, "Example");
@@ -84,7 +84,10 @@ describe("MemoRepository", () => {
     await repository.delete(1);
 
     assert.equal(await repository.findByTabId(1), undefined);
-    assert.deepEqual(await repository.listOrphans(), []);
+    assert.deepEqual(
+      await repository.listOrphansForUrl("https://example.com/"),
+      []
+    );
   });
 
   it("廃止した expanded 状態は通常表示として読む", async () => {
@@ -140,5 +143,69 @@ describe("MemoRepository: 既定レイアウト", () => {
 
     assert.equal(loaded?.layout.awaitingPlacement, false);
     assert.equal(loaded?.layout.x, 900);
+  });
+});
+
+describe("MemoRepository: 引き継ぎ候補の絞り込み", () => {
+  it("同じ URL で書かれたメモだけを候補にする", async () => {
+    stubTabs([
+      { id: 1, url: "https://claude.ai/chat/aaa", title: "キーバインドの話" },
+      { id: 2, url: "https://claude.ai/chat/bbb", title: "コピーモードの話" },
+      { id: 3, url: "https://youtube.com/watch?v=zzz", title: "動画" },
+    ]);
+    const { repository } = createRepository();
+    await repository.save(1, memo("キーバインドのメモ"));
+    await repository.save(2, memo("コピーモードのメモ"));
+    await repository.save(3, memo("動画のメモ"));
+    await repository.detach(1);
+    await repository.detach(2);
+    await repository.detach(3);
+
+    const candidates = await repository.listOrphansForUrl(
+      "https://claude.ai/chat/bbb"
+    );
+
+    // 同じサイトでも別の会話は無関係。まして別サイトのメモを引き継ぐ意味はない。
+    assert.deepEqual(
+      candidates.map((orphan) => orphan.text),
+      ["コピーモードのメモ"]
+    );
+  });
+
+  it("本文が空のメモは候補に並べない", async () => {
+    stubTabs([{ id: 1, url: "https://example.com/" }]);
+    const { repository } = createRepository();
+    await repository.save(1, memo(""));
+    await repository.detach(1);
+
+    assert.deepEqual(
+      await repository.listOrphansForUrl("https://example.com/"),
+      []
+    );
+  });
+
+  it("同じ URL の候補は新しいものが先に並ぶ", async () => {
+    stubTabs([
+      { id: 1, url: "https://example.com/" },
+      { id: 2, url: "https://example.com/" },
+    ]);
+    const { repository, storage } = createRepository();
+    await repository.save(1, memo("古い方"));
+    await repository.save(2, memo("新しい方"));
+    await repository.detach(1);
+    await repository.detach(2);
+    const records = await storage.loadRecords();
+    records[0].updatedAt = 1_000;
+    records[1].updatedAt = 2_000;
+    await storage.saveRecords(records);
+
+    const candidates = await repository.listOrphansForUrl(
+      "https://example.com/"
+    );
+
+    assert.deepEqual(
+      candidates.map((orphan) => orphan.text),
+      ["新しい方", "古い方"]
+    );
   });
 });

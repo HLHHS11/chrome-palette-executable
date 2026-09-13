@@ -23,13 +23,19 @@ async function currentTabId(): Promise<number> {
 }
 
 /**
- * 復元時に「どのタブのメモか決めきれなかった」ものの一覧。
+ * このタブが引き継げる、宙に浮いたメモの一覧。
  *
  * URL が同じタブが複数あるとき、`@core/tab-bound-store` はあえて推測せずに
  * 結合を諦める。その行き場を与えるのがこのコマンド群。
+ *
+ * 現在のタブと同じ URL のものだけが返る。別のページで書いたメモを
+ * ここへ引き継ぐことはまず無く、全部並べると実際に選びたいものが埋もれる。
  */
 const orphans = createLazyResource<OrphanMemo[]>([], async () => {
-  const response = await callBackgroundRpc({ name: "memo.listOrphans" });
+  const response = await callBackgroundRpc({
+    name: "memo.listOrphans",
+    tabId: await currentTabId(),
+  });
   if (!response.ok || !("data" in response)) return [];
   return response.data.orphans;
 });
@@ -106,8 +112,9 @@ function orphanCommands(): Command[] {
   if (list.length === 0) {
     return [
       {
-        title: "宙に浮いたメモはありません",
-        subtitle: "すべてのメモがタブに結びついています",
+        title: "このページに引き継げるメモはありません",
+        subtitle:
+          "同じ URL で書かれ、タブとの結びつきが切れたものだけが並びます",
         icon: faviconURL("about:blank"),
       },
     ];
@@ -165,7 +172,8 @@ function orphanEntryCommands(): Command[] {
   return [
     {
       title: `Memo: Resolve Orphaned Memos (${count})`,
-      subtitle: "再起動でタブを決めきれなかったメモを引き継ぐ / 破棄する",
+      subtitle:
+        "このページで書かれ、タブとの結びつきが切れたメモを引き継ぐ / 破棄する",
       keyword: `${MEMO_ORPHAN_KEYWORD}>`,
       icon: faviconURL("about:blank"),
       handler: () => setInput(`${MEMO_ORPHAN_KEYWORD}>`),

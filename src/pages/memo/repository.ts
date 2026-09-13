@@ -22,10 +22,13 @@ const NAMESPACE = "tab-memo.v1";
  *
  * メモは「タブを閉じた」だけで宙に浮くので、期限が無いと閉じるたびに 1 件ずつ
  * 積み上がって減らない。一方で短すぎると、閉じた直後に「あれ、さっきのメモ」と
- * なったときに間に合わない。タブ整理が自動削除したタブを復元できる期間と
- * 同じ 24 時間に揃えてある。
+ * なったときに間に合わない。
+ *
+ * 一覧に出るのは現在のタブと同じ URL のものだけなので、件数が増えても
+ * 画面が荒れない。それなら短く切る理由が無いので、週をまたいで思い出せる
+ * 長さにしてある。
  */
-const ORPHAN_TTL_MS = 24 * 60 * 60 * 1000;
+const ORPHAN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function bindingOf(tab: chrome.tabs.Tab): TabBinding {
   return {
@@ -125,15 +128,29 @@ export class MemoRepository {
   }
 
   /**
-   * どのタブにも結びついていないメモ。新しく触ったものを先に返す。
+   * 指定した URL のタブが引き継げる、宙に浮いたメモ。新しいものを先に返す。
+   *
+   * URL の完全一致で絞る。判定は `rematchRecords` と同じ規則で、あちらが
+   * 候補にした集合と一致させている。この一覧は再結合が決めきれなかったときの
+   * 手動の受け皿なので、機械が候補にすらしなかったものを人に見せても選べない。
+   *
+   * 全件を混ぜて出すと、別のページで書いたメモばかりが並んで実際に引き継ぎたい
+   * ものが埋もれる。同じサイトの別ページ (別の会話・別の動画) は互いに無関係で、
+   * 引き継ぐ意味が無い。
+   *
+   * 本文が空のものは出さない。付箋を出しただけで何も書かなかったもので、
+   * 引き継いでも破棄しても同じなので、選択肢として並べる価値がない。
    *
    * 一覧を出すついでに期限切れを片付ける。孤児はタブを閉じるたびに増えるので、
    * 掃除の機会を専用の仕掛け (アラーム等) に頼ると、増える側だけが動き続ける。
    */
-  async listOrphans(): Promise<OrphanMemo[]> {
+  async listOrphansForUrl(url: string): Promise<OrphanMemo[]> {
     await this.store.pruneExpiredOrphans();
     const orphans = await this.store.orphans();
     return orphans
+      .filter(
+        (record) => record.binding.url === url && record.value.text.length > 0
+      )
       .map((record) => ({
         recordId: record.id,
         text: record.value.text,

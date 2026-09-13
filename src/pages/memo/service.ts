@@ -92,8 +92,19 @@ export class MemoService {
     await this.repository.delete(tabId);
   }
 
-  /** タブを閉じたときは結びつきだけ解く。復元されれば再結合できる。 */
+  /**
+   * タブを閉じたときは結びつきだけ解く。復元されれば再結合できる。
+   *
+   * ただし本文が空のメモは残さず捨てる。付箋を出しただけで何も書かなかった
+   * ものなので、抱えておく意味がない。宙に浮いたメモの一覧に空行が並ぶのを
+   * 元から防ぐ。
+   */
   async detach(tabId: number): Promise<void> {
+    const memo = await this.repository.findByTabId(tabId);
+    if (memo && memo.text.length === 0) {
+      await this.repository.delete(tabId);
+      return;
+    }
     await this.repository.detach(tabId);
   }
 
@@ -107,8 +118,15 @@ export class MemoService {
     return this.repository.listAttachedSummaries();
   }
 
-  async listOrphans(): Promise<OrphanMemo[]> {
-    return this.repository.listOrphans();
+  /**
+   * そのタブが引き継げる、宙に浮いたメモ。
+   * 同じ URL で開かれていたものだけを返す。
+   */
+  async listOrphansFor(tabId: number): Promise<OrphanMemo[]> {
+    const tab = await chrome.tabs.get(tabId).catch(() => undefined);
+    const url = tab?.url ?? tab?.pendingUrl;
+    if (!url) return [];
+    return this.repository.listOrphansForUrl(url);
   }
 
   async adoptOrphan(recordId: string, tabId: number): Promise<boolean> {

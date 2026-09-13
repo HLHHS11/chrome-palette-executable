@@ -166,10 +166,13 @@ export async function listMemos(): Promise<
   return { ok: true, data: { memos: await service.listSummaries() } };
 }
 
-export async function listOrphanMemos(): Promise<
-  RpcResponse<{ orphans: OrphanMemo[] }>
-> {
-  return { ok: true, data: { orphans: await service.listOrphans() } };
+export async function listOrphanMemos(
+  params: { tabId?: number },
+  context: RpcHandlerContext
+): Promise<RpcResponse<{ orphans: OrphanMemo[] }>> {
+  const tabId = resolveTabId(params.tabId, context);
+  if (tabId === null) return { ok: false, error: "Invalid tabId." };
+  return { ok: true, data: { orphans: await service.listOrphansFor(tabId) } };
 }
 
 export async function adoptOrphanMemo(
