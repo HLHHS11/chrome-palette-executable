@@ -20,6 +20,7 @@ const unblocked: OpenTabFacts = {
   audible: false,
   incognito: false,
   extensionPage: false,
+  hasMemo: false,
 };
 
 function normalRecord(
@@ -82,6 +83,27 @@ describe("tab retention policy", () => {
     assert.deepEqual(
       assessTabRetention(record, { ...unblocked, active: true }, 0, now).kind,
       "blocked"
+    );
+  });
+
+  it("keeps a memo tab as memo-protected instead of delete-eligible", () => {
+    const record = normalRecord({
+      lastUsedAt: now - TAB_RETENTION_POLICY.normalInactiveMs * 2,
+    });
+    assert.equal(
+      assessTabRetention(record, { ...unblocked, hasMemo: true }, 0, now).kind,
+      "memo-protected"
+    );
+  });
+
+  it("does not recommend stale cleanup while a memo remains", () => {
+    const record = normalRecord({
+      retention: "auto-protected",
+      lastUsedAt: now - TAB_RETENTION_POLICY.staleAfterMs,
+    });
+    assert.equal(
+      assessTabRetention(record, { ...unblocked, hasMemo: true }, 0, now).kind,
+      "auto-protected"
     );
   });
 

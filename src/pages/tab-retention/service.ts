@@ -1,3 +1,5 @@
+import { MemoRepository } from "@pages/memo";
+
 import { ManualProtectionRepository } from "./manual-protection-repository";
 import {
   TAB_RETENTION_POLICY,
@@ -36,7 +38,8 @@ export class TabRetentionService {
 
   constructor(
     private readonly storage: ChromeTabRetentionStorage,
-    private readonly manualProtection: ManualProtectionRepository = new ManualProtectionRepository()
+    private readonly manualProtection: ManualProtectionRepository = new ManualProtectionRepository(),
+    private readonly memos: MemoRepository = new MemoRepository()
   ) {}
 
   private queueOperation<T>(operation: () => Promise<T>): Promise<T> {
@@ -152,14 +155,24 @@ export class TabRetentionService {
     runtime.foregroundStartedAt = now;
   }
 
-  private factsForTab(tab: IdentifiedTab): OpenTabFacts {
+  private factsForTab(
+    tab: IdentifiedTab,
+    memoTabIds: ReadonlySet<number>
+  ): OpenTabFacts {
     return {
       active: tab.active,
       pinned: tab.pinned,
       audible: tab.audible === true,
       incognito: tab.incognito,
       extensionPage: tabUrl(tab).startsWith(chrome.runtime.getURL("")),
+      hasMemo: memoTabIds.has(tab.id),
     };
+  }
+
+  /** 本文のあるメモが結びついている tabId。空メモは自動削除の保護対象にしない。 */
+  private async memoTabIds(): Promise<Set<number>> {
+    const summaries = await this.memos.listAttachedSummaries();
+    return new Set(summaries.map((summary) => summary.tabId));
   }
 
   /**
@@ -512,6 +525,7 @@ export class TabRetentionService {
       const now = Date.now();
       const { state, runtime, tabs } = await this.refreshOpenTabState(now);
       const featureEnabledAt = state.featureEnabledAt ?? now;
+      const memoTabIds = await this.memoTabIds();
       const items: TabRetentionTabItem[] = tabs.map((tab) => {
         const record = state.records.get(tab.id) ?? this.createRecord(tab, now);
         return {
@@ -528,7 +542,7 @@ export class TabRetentionService {
           autoProtectionReason: record.autoProtectionReason,
           assessment: assessTabRetention(
             record,
-            this.factsForTab(tab),
+            this.factsForTab(tab, memoTabIds),
             featureEnabledAt,
             now
           ),
@@ -554,13 +568,14 @@ export class TabRetentionService {
       const now = Date.now();
       const { state, runtime, tabs } = await this.refreshOpenTabState(now);
       const featureEnabledAt = state.featureEnabledAt ?? now;
+      const memoTabIds = await this.memoTabIds();
 
       for (const tab of tabs) {
         const record = state.records.get(tab.id);
         if (!record) continue;
         const assessment = assessTabRetention(
           record,
-          this.factsForTab(tab),
+          this.factsForTab(tab, memoTabIds),
           featureEnabledAt,
           now
         );
@@ -583,7 +598,7 @@ export class TabRetentionService {
         }
         const finalAssessment = assessTabRetention(
           record,
-          this.factsForTab(freshTab),
+          this.factsForTab(freshTab, memoTabIds),
           featureEnabledAt,
           Date.now()
         );
@@ -622,7 +637,7 @@ export class TabRetentionService {
         .filter(({ tab, record }) => {
           const assessment = assessTabRetention(
             record,
-            this.factsForTab(tab),
+            this.factsForTab(tab, memoTabIds),
             featureEnabledAt,
             now
           );

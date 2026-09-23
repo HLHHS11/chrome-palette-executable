@@ -71,7 +71,9 @@ export type TabRetentionAssessment =
   | { kind: "delete-eligible"; deleteAt: number }
   | { kind: "auto-protected"; staleAt: number }
   | { kind: "stale-recommended"; staleAt: number }
-  | { kind: "manual-protected" };
+  | { kind: "manual-protected" }
+  /** 本文のあるメモがあり、自動削除しない。一覧では自動保持に載せる。 */
+  | { kind: "memo-protected" };
 
 export type OpenTabFacts = {
   active: boolean;
@@ -79,6 +81,8 @@ export type OpenTabFacts = {
   audible: boolean;
   incognito: boolean;
   extensionPage: boolean;
+  /** 本文のあるメモが結びついている。空メモは対象外。 */
+  hasMemo: boolean;
 };
 
 export type TabRetentionTabItem = {

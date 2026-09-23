@@ -68,11 +68,15 @@ export function assessTabRetention(
   const blockReason = currentBlockReason(facts);
   if (record.retention === "auto-protected") {
     const staleAt = record.lastUsedAt + TAB_RETENTION_POLICY.staleAfterMs;
-    if (!blockReason && now >= staleAt) {
+    // メモがあるうちは「古くなった」見直し通知も出さない。
+    if (!blockReason && !facts.hasMemo && now >= staleAt) {
       return { kind: "stale-recommended", staleAt };
     }
     return { kind: "auto-protected", staleAt };
   }
+
+  // メモ保護は一時ブロックではなく、自動保持と同じ棚に載せる意図的な保護。
+  if (facts.hasMemo) return { kind: "memo-protected" };
 
   const deleteAt = record.lastUsedAt + TAB_RETENTION_POLICY.normalInactiveMs;
   if (blockReason) return { kind: "blocked", reason: blockReason, deleteAt };

@@ -5,7 +5,6 @@ import type { backgroundRoutes } from "@pages/background/routes";
 import { timeAgo } from "@pages/lib/time-ago";
 import type {
   AutoDeletedTabRecord,
-  TabRetention,
   TabRetentionCategory,
   TabRetentionTabItem,
   UnmatchedManualProtection,
@@ -59,6 +58,7 @@ function formatDuration(durationMs: number): string {
 function describeTab(item: TabRetentionTabItem, now: number): string {
   const assessment = item.assessment;
   if (assessment.kind === "manual-protected") return "明示保持";
+  if (assessment.kind === "memo-protected") return "メモがあるため保持";
   if (assessment.kind === "stale-recommended") return "削除を推奨";
   if (assessment.kind === "auto-protected") {
     return item.autoProtectionReason === "active-time"
@@ -81,6 +81,24 @@ function describeTab(item: TabRetentionTabItem, now: number): string {
     "extension-page": "拡張機能ページのため対象外",
   };
   return reasonLabels[assessment.reason];
+}
+
+/** 一覧の棚分け。メモ保護は retention が normal のままでも自動保持に載せる。 */
+function matchesCategory(
+  item: TabRetentionTabItem,
+  target: TabRetentionCategory
+): boolean {
+  if (target === "deleted") return false;
+  if (target === "manual") return item.retention === "manual-protected";
+  if (target === "auto") {
+    return (
+      item.retention === "auto-protected" ||
+      item.assessment.kind === "memo-protected"
+    );
+  }
+  return (
+    item.retention === "normal" && item.assessment.kind !== "memo-protected"
+  );
 }
 
 /** 削除確認では、メモを本文ごと見せる。消す前に読めないと意味がない。 */
@@ -140,14 +158,9 @@ export default function TabRetentionView(props: {
         .map((item) => ({ kind: "deleted", item }));
     }
 
-    const expectedRetention: TabRetention =
-      currentCategory === "closing"
-        ? "normal"
-        : currentCategory === "auto"
-          ? "auto-protected"
-          : "manual-protected";
+    // deleted は上で return 済み。
     const liveRows: ViewRow[] = current.tabs
-      .filter((item) => item.retention === expectedRetention)
+      .filter((item) => matchesCategory(item, currentCategory))
       .filter((item) =>
         `${item.title}\n${item.url}\n${memoOf(item.tabId) ?? ""}`
           .toLowerCase()
@@ -382,14 +395,8 @@ export default function TabRetentionView(props: {
     const current = overview();
     if (!current) return 0;
     if (target === "deleted") return current.recentlyDeleted.length;
-    const retention: TabRetention =
-      target === "closing"
-        ? "normal"
-        : target === "auto"
-          ? "auto-protected"
-          : "manual-protected";
-    const liveCount = current.tabs.filter(
-      (item) => item.retention === retention
+    const liveCount = current.tabs.filter((item) =>
+      matchesCategory(item, target)
     ).length;
     return target === "manual"
       ? liveCount + current.unmatchedManual.length
