@@ -3,7 +3,11 @@ import {
   type RpcVoidResponseBody,
   createRuntimeRpcClient,
 } from "@core/rpc";
-import { MEMO_DEFAULT_RIGHT_MARGIN, MEMO_FONT_SCALE } from "@pages/memo";
+import {
+  MEMO_DEFAULT_LAYOUT,
+  MEMO_DEFAULT_RIGHT_MARGIN,
+  MEMO_FONT_SCALE,
+} from "@pages/memo";
 import type { Memo, MemoDisplayState } from "@pages/memo";
 
 import { backgroundRoutes } from "../background/routes";
@@ -32,6 +36,8 @@ const HOST_ID = "chrome-palette-memo";
 const LAYOUT_PERSIST_DEBOUNCE_MS = 400;
 const TEXT_PERSIST_DEBOUNCE_MS = 600;
 const MINIMIZED_SIZE = { width: 168, height: 32 } as const;
+/** 本文に合わせて伸ばせる高さの上限。ビューポートを覆うとページが読めなくなる。 */
+const AUTO_HEIGHT_VIEWPORT_RATIO = 0.6;
 
 interface OverlayHandle {
   render(memo: Memo | null): void;
@@ -116,6 +122,8 @@ function createOverlay(): OverlayHandle {
   shadow.appendChild(panel);
 
   let current: Memo | null = null;
+  /** いま画面に当てている寸法。手動リサイズと自分の描画を見分けるのに使う。 */
+  let renderedSize: { width: number; height: number } | null = null;
   let layoutTimer: number | null = null;
   let textTimer: number | null = null;
 
@@ -132,11 +140,41 @@ function createOverlay(): OverlayHandle {
     }, LAYOUT_PERSIST_DEBOUNCE_MS);
   };
 
+  /**
+   * 本文を収めるのに要る高さ。寸法を自分で決めた付箋では伸ばさない。
+   * 手で決めた大きさを勝手に変えられるのは、調整機能そのものを壊す。
+   *
+   * 伸ばした結果は保存しない。保存されている寸法は既定のまま、
+   * 見せ方だけを本文に合わせる。本文が減れば既定の高さまで戻る。
+   */
+  const autoHeight = (layout: Memo["layout"]): number => {
+    const { width, height } = MEMO_DEFAULT_LAYOUT;
+    if (layout.width !== width || layout.height !== height) {
+      return layout.height;
+    }
+    // 伸ばす前の本文の高さを知りたいので、いったん潰してから測る。
+    const keptFlex = textarea.style.flex;
+    const keptHeight = textarea.style.height;
+    textarea.style.flex = "0 0 auto";
+    textarea.style.height = "0";
+    const bodyHeight = textarea.scrollHeight;
+    textarea.style.flex = keptFlex;
+    textarea.style.height = keptHeight;
+
+    const frame =
+      header.offsetHeight + (panel.offsetHeight - panel.clientHeight);
+    const limit = Math.max(
+      height,
+      window.innerHeight * AUTO_HEIGHT_VIEWPORT_RATIO
+    );
+    return Math.round(Math.min(Math.max(height, frame + bodyHeight), limit));
+  };
+
   /** その状態で実際に描く寸法。最小化中は保存寸法ではなくつまみの大きさ。 */
   const sizeOf = (layout: Memo["layout"]): { width: number; height: number } =>
     layout.state === "minimized"
       ? MINIMIZED_SIZE
-      : { width: layout.width, height: layout.height };
+      : { width: layout.width, height: autoHeight(layout) };
 
   /** 保存位置ではなく、いま実際に描かれる位置。ドラッグの起点にも使う。 */
   const visiblePosition = (
@@ -149,25 +187,34 @@ function createOverlay(): OverlayHandle {
   const apply = (): void => {
     if (!current) {
       panel.style.display = "none";
+      renderedSize = null;
       return;
     }
     const { fontScale, state } = current.layout;
-    const { width, height } = sizeOf(current.layout);
-    const { x, y } = visiblePosition(current.layout);
     panel.style.display = "flex";
     panel.dataset.state = state;
+    // 高さは本文を測って決めるので、文字サイズと本文を先に当てておく。
+    textarea.style.fontSize = `${fontScale}rem`;
+    // 入力中に外部からの更新で値を差し戻すとカーソルが飛ぶので触らない。
+    if (!isEditing()) textarea.value = current.text;
+    const { width, height } = sizeOf(current.layout);
+    const { x, y } = clampToViewport(
+      current.layout.x,
+      current.layout.y,
+      width,
+      height
+    );
     panel.style.left = `${x}px`;
     panel.style.top = `${y}px`;
     panel.style.width = `${width}px`;
     panel.style.height = `${height}px`;
-    textarea.style.fontSize = `${fontScale}rem`;
+    renderedSize = { width, height };
     toggleMinimize.textContent = state === "minimized" ? "▣" : "—";
     toggleMinimize.title =
       state === "minimized" ? "元の大きさに戻す" : "最小化";
     // 最小化中でも「メモがある」ことは分かる必要があるので、
     // 本文の先頭をつまみに出しておく。
     grip.textContent = state === "minimized" ? previewOf(current.text) : "メモ";
-    if (!isEditing()) textarea.value = current.text;
   };
 
   const mutateLayout = (patch: Partial<Memo["layout"]>): void => {
@@ -206,8 +253,7 @@ function createOverlay(): OverlayHandle {
   textarea.addEventListener("input", () => {
     if (!current) return;
     current = { ...current, text: textarea.value };
-    grip.textContent =
-      current.layout.state === "minimized" ? previewOf(current.text) : "メモ";
+    apply();
     if (textTimer !== null) clearTimeout(textTimer);
     const text = textarea.value;
     textTimer = window.setTimeout(() => {
@@ -223,16 +269,14 @@ function createOverlay(): OverlayHandle {
     textarea.addEventListener(type, (e) => e.stopPropagation());
   }
 
-  // 角を引っ張っての手動リサイズを保存する。描き直しは保存値どおりの寸法を
-  // 書き戻すので、自分の描画が原因の通知では差分が出ず、ループにはならない。
+  // 角を引っ張っての手動リサイズを保存する。自分で当てた寸法との差だけを見る
+  // ので、本文に合わせて伸ばした高さが手動指定として保存されることはない。
   // 最小化中はつまみの寸法を当てているだけなので対象外。
   new ResizeObserver(() => {
     if (!current || current.layout.state !== "normal") return;
     const width = Math.round(panel.offsetWidth);
     const height = Math.round(panel.offsetHeight);
-    if (width === current.layout.width && height === current.layout.height) {
-      return;
-    }
+    if (width === renderedSize?.width && height === renderedSize.height) return;
     mutateLayout({ width, height });
   }).observe(panel);
 
@@ -256,7 +300,7 @@ function createOverlay(): OverlayHandle {
 
   /**
    * 既定位置はビューポートを見ないと決まらないので、初めて描くここで確定させる。
-   * 描く前に済ませること。後に回すと予備の座標で一瞬描かれてから飛ぶ。
+   * 高さは本文を測らないと決まらないため、一度描いてから呼ぶ。
    */
   const resolvePlacement = (): boolean => {
     if (!current?.layout.awaitingPlacement) return false;
@@ -272,11 +316,13 @@ function createOverlay(): OverlayHandle {
   return {
     render(memo) {
       current = memo;
-      // 入力中に外部からの更新で値を差し戻すとカーソルが飛ぶので触らない。
-      if (memo && !isEditing()) textarea.value = memo.text;
-      const placed = resolvePlacement();
+      // 位置を決める前の描画は測るためのもの。描き直しは同じ処理の中で
+      // 済むので、予備の座標のまま画面に出ることはない。
       apply();
-      if (placed) persistLayout();
+      if (resolvePlacement()) {
+        apply();
+        persistLayout();
+      }
     },
     focus() {
       if (!current) return;
