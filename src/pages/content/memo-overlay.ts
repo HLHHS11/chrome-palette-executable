@@ -38,6 +38,22 @@ const TEXT_PERSIST_DEBOUNCE_MS = 600;
 const MINIMIZED_SIZE = { width: 168, height: 32 } as const;
 /** 本文に合わせて伸ばせる高さの上限。ビューポートを覆うとページが読めなくなる。 */
 const AUTO_HEIGHT_VIEWPORT_RATIO = 0.6;
+/** ヘッダのボタンと本文の 1 行が潰れずに収まる大きさ。 */
+const MIN_PANEL_SIZE = { width: 168, height: 96 };
+/**
+ * 大きさを変えるつまみ。`edgeX` / `edgeY` はどの辺を動かすかで、
+ * -1 が左・上、1 が右・下、0 はその向きに動かさないことを表す。
+ */
+const RESIZE_HANDLES = [
+  { name: "n", edgeX: 0, edgeY: -1 },
+  { name: "s", edgeX: 0, edgeY: 1 },
+  { name: "w", edgeX: -1, edgeY: 0 },
+  { name: "e", edgeX: 1, edgeY: 0 },
+  { name: "nw", edgeX: -1, edgeY: -1 },
+  { name: "ne", edgeX: 1, edgeY: -1 },
+  { name: "sw", edgeX: -1, edgeY: 1 },
+  { name: "se", edgeX: 1, edgeY: 1 },
+];
 
 interface OverlayHandle {
   render(memo: Memo | null): void;
@@ -122,8 +138,6 @@ function createOverlay(): OverlayHandle {
   shadow.appendChild(panel);
 
   let current: Memo | null = null;
-  /** いま画面に当てている寸法。手動リサイズと自分の描画を見分けるのに使う。 */
-  let renderedSize: { width: number; height: number } | null = null;
   let layoutTimer: number | null = null;
   let textTimer: number | null = null;
 
@@ -187,7 +201,6 @@ function createOverlay(): OverlayHandle {
   const apply = (): void => {
     if (!current) {
       panel.style.display = "none";
-      renderedSize = null;
       return;
     }
     const { fontScale, state } = current.layout;
@@ -208,7 +221,6 @@ function createOverlay(): OverlayHandle {
     panel.style.top = `${y}px`;
     panel.style.width = `${width}px`;
     panel.style.height = `${height}px`;
-    renderedSize = { width, height };
     toggleMinimize.textContent = state === "minimized" ? "▣" : "—";
     toggleMinimize.title =
       state === "minimized" ? "元の大きさに戻す" : "最小化";
@@ -241,6 +253,20 @@ function createOverlay(): OverlayHandle {
   larger.addEventListener("click", () => stepFontScale(1));
   smaller.addEventListener("click", () => stepFontScale(-1));
 
+  // 起点は保存寸法ではなく、いま見えている箱。本文に合わせて伸びている
+  // 最中に掴んでも、その大きさから続けて変えられるようにする。
+  const visibleBox = (): PanelBox | null => {
+    if (!current || current.layout.state !== "normal") return null;
+    const { x, y } = visiblePosition(current.layout);
+    return { x, y, width: panel.offsetWidth, height: panel.offsetHeight };
+  };
+  for (const { name, edgeX, edgeY } of RESIZE_HANDLES) {
+    const resizer = document.createElement("div");
+    resizer.className = `resizer ${name}`;
+    panel.appendChild(resizer);
+    bindResize(resizer, edgeX, edgeY, visibleBox, (box) => mutateLayout(box));
+  }
+
   // 起点は保存位置ではなく表示位置。寄せて表示している最中に掴んだとき、
   // 保存位置から動き始めて飛ぶのを防ぐ。動かした先はそのまま保存する。
   bindDrag(
@@ -268,17 +294,6 @@ function createOverlay(): OverlayHandle {
   for (const type of ["keydown", "keyup", "keypress"] as const) {
     textarea.addEventListener(type, (e) => e.stopPropagation());
   }
-
-  // 角を引っ張っての手動リサイズを保存する。自分で当てた寸法との差だけを見る
-  // ので、本文に合わせて伸ばした高さが手動指定として保存されることはない。
-  // 最小化中はつまみの寸法を当てているだけなので対象外。
-  new ResizeObserver(() => {
-    if (!current || current.layout.state !== "normal") return;
-    const width = Math.round(panel.offsetWidth);
-    const height = Math.round(panel.offsetHeight);
-    if (width === renderedSize?.width && height === renderedSize.height) return;
-    mutateLayout({ width, height });
-  }).observe(panel);
 
   // ウィンドウの大きさが変わったら描き直す。保存はしないので、
   // 元の大きさに戻れば元の位置に戻る。
@@ -437,6 +452,79 @@ function bindDrag(
   });
 }
 
+interface PanelBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * 辺や角をつかんでの大きさ変更。ブラウザ標準のリサイズは右下の角しか出せず、
+ * 狙って掴むのに気を使うため自前で持つ。
+ *
+ * 上辺・左辺を動かすときは反対側の辺が動かないよう、位置も一緒に変える。
+ */
+function bindResize(
+  resizer: HTMLElement,
+  edgeX: number,
+  edgeY: number,
+  readOrigin: () => PanelBox | null,
+  onResize: (box: PanelBox) => void
+): void {
+  resizer.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const origin = readOrigin();
+    if (!origin) return;
+
+    event.preventDefault();
+    resizer.setPointerCapture(event.pointerId);
+    const startX = event.clientX;
+    const startY = event.clientY;
+
+    const onPointerMove = (move: PointerEvent): void => {
+      // 四辺の座標で考える。掴んでいない辺は動かさない。
+      let left = origin.x;
+      let top = origin.y;
+      let right = origin.x + origin.width;
+      let bottom = origin.y + origin.height;
+      const movedX = move.clientX - startX;
+      const movedY = move.clientY - startY;
+      if (edgeX < 0) {
+        left = Math.min(left + movedX, right - MIN_PANEL_SIZE.width);
+      }
+      if (edgeX > 0) {
+        right = Math.max(right + movedX, left + MIN_PANEL_SIZE.width);
+      }
+      if (edgeY < 0) {
+        top = Math.min(top + movedY, bottom - MIN_PANEL_SIZE.height);
+      }
+      if (edgeY > 0) {
+        bottom = Math.max(bottom + movedY, top + MIN_PANEL_SIZE.height);
+      }
+      // ビューポートからはみ出した分は掴めなくなるので、中に留める。
+      left = Math.max(0, left);
+      top = Math.max(0, top);
+      right = Math.min(window.innerWidth, right);
+      bottom = Math.min(window.innerHeight, bottom);
+      onResize({
+        x: Math.round(left),
+        y: Math.round(top),
+        width: Math.round(right - left),
+        height: Math.round(bottom - top),
+      });
+    };
+    const onPointerUp = (): void => {
+      resizer.removeEventListener("pointermove", onPointerMove);
+      resizer.removeEventListener("pointerup", onPointerUp);
+      resizer.removeEventListener("pointercancel", onPointerUp);
+    };
+    resizer.addEventListener("pointermove", onPointerMove);
+    resizer.addEventListener("pointerup", onPointerUp);
+    resizer.addEventListener("pointercancel", onPointerUp);
+  });
+}
+
 function buildStyle(): HTMLStyleElement {
   const style = document.createElement("style");
   style.textContent = `
@@ -474,7 +562,14 @@ function buildStyle(): HTMLStyleElement {
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .actions { display: flex; gap: 2px; flex: 0 0 auto; }
+    /* 角のつまみに重なってボタンが押せなくなるのを防ぐ。 */
+    .actions {
+      display: flex;
+      gap: 2px;
+      flex: 0 0 auto;
+      position: relative;
+      z-index: 3;
+    }
     .actions button {
       all: unset;
       cursor: pointer;
@@ -502,7 +597,23 @@ function buildStyle(): HTMLStyleElement {
     .panel[data-state="minimized"] .header { border-bottom: none; }
     /* つまみの状態で文字サイズを変えることはない。残すのは復帰だけ。 */
     .panel[data-state="minimized"] .actions button.font { display: none; }
-    .panel[data-state="normal"] { resize: both; }
+    /* 大きさを変えるつまみ。枠の内側に敷くので、角の丸みで欠けない。 */
+    .resizer { position: absolute; z-index: 1; }
+    .resizer.n { top: 0; left: 0; right: 0; height: 6px; cursor: ns-resize; }
+    .resizer.s { bottom: 0; left: 0; right: 0; height: 6px; cursor: ns-resize; }
+    .resizer.w { top: 0; bottom: 0; left: 0; width: 6px; cursor: ew-resize; }
+    .resizer.e { top: 0; bottom: 0; right: 0; width: 6px; cursor: ew-resize; }
+    /* 角は辺より優先して掴めるようにする。 */
+    .resizer.nw, .resizer.ne, .resizer.sw, .resizer.se {
+      width: 12px;
+      height: 12px;
+      z-index: 2;
+    }
+    .resizer.nw { top: 0; left: 0; cursor: nwse-resize; }
+    .resizer.ne { top: 0; right: 0; cursor: nesw-resize; }
+    .resizer.sw { bottom: 0; left: 0; cursor: nesw-resize; }
+    .resizer.se { bottom: 0; right: 0; cursor: nwse-resize; }
+    .panel[data-state="minimized"] .resizer { display: none; }
   `;
   return style;
 }
