@@ -51,7 +51,7 @@ async function stopTimer(timerId: string): Promise<void> {
 
 function fieldsOf(context: CommandRunContext): DurationFields {
   return {
-    hours: context.args.hours ?? "",
+    hours: "",
     minutes: context.args.minutes ?? "",
     seconds: context.args.seconds ?? "",
   };
@@ -62,8 +62,9 @@ const commands: Command[] = [
     title: "Timer: Start Timer",
     subtitle: "タイマーを開始する",
     icon: faviconURL("about:blank"),
+    // 時の欄は置かない。その場で打ち込んで済ませたいのは短い待ち時間であり、
+    // 数時間先の予定ならタイトルも決めたくなって詳細設定へ回るため。
     args: [
-      { name: "hours", placeholder: "時" },
       { name: "minutes", placeholder: "分" },
       { name: "seconds", placeholder: "秒" },
     ],
