@@ -16,6 +16,7 @@ import {
 import { tinykeys } from "tinykeys";
 
 import { closeTimerView } from "./view-intent";
+import type { TimerListAction } from "./view-intent";
 
 const callBackgroundRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
@@ -25,10 +26,11 @@ const TICK_MS = 500;
 /**
  * 仕掛けているタイマーの一覧。
  *
- * Enter で待っていたタブへ戻り、Control+x でタイマーを止める。
- * タブが閉じられていたタイマーは、Enter でその URL を開き直す。
+ * 止めに来たときは、まだ鳴っていないものだけを並べ、Enter をそのまま停止に
+ * 充てる。見に来たときは Enter で待っていたタブへ戻り、Control+x で止める。
+ * タブが閉じられていたタイマーでは、戻る先として記録された URL を開き直す。
  */
-export default function TimerListView() {
+export default function TimerListView(props: { action: TimerListAction }) {
   const [entries, { refetch }] = createResource<TimerEntry[]>(async () => {
     const response = await callBackgroundRpc({ name: "timer.listAll" });
     if (!response.ok || !("data" in response)) return [];
@@ -38,7 +40,11 @@ export default function TimerListView() {
   const [now, setNow] = createSignal(Date.now());
   const [selectedInternal, setSelectedInternal] = createSignal(0);
 
-  const rows = createMemo(() => entries() ?? []);
+  const rows = createMemo(() => {
+    const all = entries() ?? [];
+    if (props.action !== "stop") return all;
+    return all.filter((entry) => entry.timer.status === "pending");
+  });
   const selectedIndex = createMemo(() => {
     const count = rows().length;
     if (count <= 0) return 0;
@@ -66,6 +72,16 @@ export default function TimerListView() {
     await refetch();
   };
 
+  /** 行を選んだときの操作。止めに来たのか、見に来たのかで変わる。 */
+  const activateRow = async (entry: TimerEntry | undefined): Promise<void> => {
+    if (props.action !== "stop") {
+      await activate(entry);
+      return;
+    }
+    await stop(entry);
+    window.close();
+  };
+
   onMount(() => {
     const ticking = setInterval(() => setNow(Date.now()), TICK_MS);
     const unsubscribe = tinykeys(window, {
@@ -79,7 +95,7 @@ export default function TimerListView() {
       },
       Enter: (event) => {
         event.preventDefault();
-        void activate(rows()[selectedIndex()]);
+        void activateRow(rows()[selectedIndex()]);
       },
       "Control+x": (event) => {
         event.preventDefault();
@@ -104,15 +120,21 @@ export default function TimerListView() {
   return (
     <div class="TimerList">
       <div class="timer_list_header">
-        <span>タイマー</span>
+        <span>{props.action === "stop" ? "タイマーを止める" : "タイマー"}</span>
         <span class="timer_list_hint">
-          Enter で移動 / Control+x で停止 / Esc で戻る
+          {props.action === "stop"
+            ? "Enter で停止 / Esc で戻る"
+            : "Enter で移動 / Control+x で停止 / Esc で戻る"}
         </span>
       </div>
       <Show
         when={rows().length > 0}
         fallback={
-          <div class="timer_list_empty">仕掛けているタイマーはありません</div>
+          <div class="timer_list_empty">
+            {props.action === "stop"
+              ? "動いているタイマーはありません"
+              : "仕掛けているタイマーはありません"}
+          </div>
         }
       >
         <div class="timer_list_rows">
@@ -124,7 +146,7 @@ export default function TimerListView() {
                   selected: index() === selectedIndex(),
                   fired: entry.timer.status === "fired",
                 }}
-                onClick={() => void activate(entry)}
+                onClick={() => void activateRow(entry)}
               >
                 <span class="timer_remaining">{remainingOf(entry)}</span>
                 <div class="timer_body">

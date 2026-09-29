@@ -149,6 +149,11 @@ const timerFormFields = createMemo(() => {
   return view?.kind === "form" ? view.fields : null;
 });
 
+const timerListAction = createMemo(() => {
+  const view = timerView();
+  return view?.kind === "list" ? view.action : null;
+});
+
 const runCommand = async (command: Command, context: CommandRunContext) => {
   try {
     const service = rankingService();
@@ -260,8 +265,8 @@ const App = () => {
           items={() => verticalTabs() ?? []}
           onSelect={selectVerticalTab}
         />
-      ) : timerView()?.kind === "list" ? (
-        <TimerListView />
+      ) : timerListAction() !== null ? (
+        <TimerListView action={timerListAction() ?? "manage"} />
       ) : timerFormFields() !== null ? (
         <TimerFormView initial={timerFormFields() ?? EMPTY_DURATION_FIELDS} />
       ) : isTabRetentionMode() ? (

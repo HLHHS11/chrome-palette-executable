@@ -2,9 +2,9 @@ import type { Command, CommandRunContext } from "@core/command";
 import { createRuntimeRpcClient } from "@core/rpc";
 import type { backgroundRoutes } from "@pages/background/routes";
 import { toDurationMs } from "@pages/timer";
-import type { DurationFields } from "@pages/timer";
+import type { DurationFields, TimerEntry } from "@pages/timer";
 
-import { createLazyResource, setInput } from "~/util/signals";
+import { createLazyResource, parsedInput, setInput } from "~/util/signals";
 
 import { faviconURL } from "../../util/favicon";
 import { openTimerForm, openTimerList } from "./view-intent";
@@ -20,12 +20,15 @@ async function currentTabId(): Promise<number> {
   return tab.id;
 }
 
-/** 一覧の入口を出すかどうかの判断にだけ使う。中身は一覧ビューが読み直す。 */
-const timerCount = createLazyResource<number>(0, async () => {
+/** 出す行を決めるためだけに読む。一覧の中身は表示側が読み直す。 */
+const entries = createLazyResource<TimerEntry[]>([], async () => {
   const response = await callBackgroundRpc({ name: "timer.listAll" });
-  if (!response.ok || !("data" in response)) return 0;
-  return response.data.entries.length;
+  if (!response.ok || !("data" in response)) return [];
+  return response.data.entries;
 });
+
+const runningTimers = (): TimerEntry[] =>
+  entries().filter((entry) => entry.timer.status === "pending");
 
 /** 入力された時間でタイマーを仕掛ける。タイトルと鳴らし方は既定のまま。 */
 async function startTimer(fields: DurationFields): Promise<void> {
@@ -38,6 +41,11 @@ async function startTimer(fields: DurationFields): Promise<void> {
     title: "",
     sound: "default",
   });
+  if (!response.ok) throw new Error(response.error);
+}
+
+async function stopTimer(timerId: string): Promise<void> {
+  const response = await callBackgroundRpc({ name: "timer.remove", timerId });
   if (!response.ok) throw new Error(response.error);
 }
 
@@ -73,20 +81,48 @@ const commands: Command[] = [
   },
 ];
 
+/**
+ * 1 本だけ動いているなら、選ばせずにその場で止める。止めたいものが
+ * ひとつしかない状況が大半で、そこに一覧を挟んでも選択の手間が増えるだけ。
+ */
+function stopCommands(): Command[] {
+  const running = runningTimers();
+  if (running.length === 0) return [];
+  return [
+    {
+      title: "Timer: Stop Running Timer",
+      subtitle: "動いているタイマーを止める",
+      icon: faviconURL("about:blank"),
+      handler: () => {
+        if (running.length > 1) {
+          openTimerList("stop");
+          return;
+        }
+        void stopTimer(running[0].timer.id)
+          .then(() => window.close())
+          .catch((e: unknown) => setInput(`エラーが発生しました。詳細: ${e}`));
+      },
+    },
+  ];
+}
+
 /** 0 件のときは入口ごと隠す。普段は無い状態なので、常設すると邪魔なだけ。 */
-function listEntryCommands(): Command[] {
-  const count = timerCount();
+function manageCommands(): Command[] {
+  const count = entries().length;
   if (count === 0) return [];
   return [
     {
-      title: `Timer: Timers (${count})`,
-      subtitle: "タイマーを一覧する",
+      title: `Timer: Manage Timers (${count})`,
+      subtitle: "タイマーを管理する",
       icon: faviconURL("about:blank"),
-      handler: () => openTimerList(),
+      handler: () => openTimerList("manage"),
     },
   ];
 }
 
 export default function timerSuggestions(): Command[] {
-  return [...commands, ...listEntryCommands()];
+  // 別の機能のキーワードで絞り込んでいる最中は、その機能の行だけを見せる。
+  // タイマーはメモや他の機能と関わりを持たない。
+  if (parsedInput().isCommand) return [];
+  return [...commands, ...stopCommands(), ...manageCommands()];
 }
