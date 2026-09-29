@@ -62,6 +62,8 @@ const manifest = defineManifest(async () => ({
   ],
   permissions: [
     "alarms",
+    // タイマーの通知音を鳴らす offscreen document 用。service worker は音を出せない。
+    "offscreen",
     "tabs",
     "tabGroups",
     "activeTab",

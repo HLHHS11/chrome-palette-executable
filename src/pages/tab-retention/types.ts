@@ -73,7 +73,9 @@ export type TabRetentionAssessment =
   | { kind: "stale-recommended"; staleAt: number }
   | { kind: "manual-protected" }
   /** 本文のあるメモがあり、自動削除しない。一覧では自動保持に載せる。 */
-  | { kind: "memo-protected" };
+  | { kind: "memo-protected" }
+  /** 鳴っていないタイマーがあり、自動削除しない。一覧では自動保持に載せる。 */
+  | { kind: "timer-protected" };
 
 export type OpenTabFacts = {
   active: boolean;
@@ -83,6 +85,8 @@ export type OpenTabFacts = {
   extensionPage: boolean;
   /** 本文のあるメモが結びついている。空メモは対象外。 */
   hasMemo: boolean;
+  /** まだ鳴っていないタイマーが結びついている。 */
+  hasPendingTimer: boolean;
 };
 
 export type TabRetentionTabItem = {

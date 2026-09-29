@@ -1,4 +1,5 @@
 import { MemoRepository } from "@pages/memo";
+import { TimerService } from "@pages/timer";
 
 import { ManualProtectionRepository } from "./manual-protection-repository";
 import {
@@ -21,6 +22,12 @@ import type {
 
 type IdentifiedTab = chrome.tabs.Tab & { id: number };
 
+/** 自動削除の対象から外す理由を、タブ ID の集合として持ったもの。 */
+interface TabProtections {
+  memoTabIds: ReadonlySet<number>;
+  timerTabIds: ReadonlySet<number>;
+}
+
 export const TAB_RETENTION_ALARM_NAME = "tab-retention-cleanup";
 export const TAB_RETENTION_STALE_NOTIFICATION_ID =
   "tab-retention-stale-recommendation";
@@ -39,7 +46,8 @@ export class TabRetentionService {
   constructor(
     private readonly storage: ChromeTabRetentionStorage,
     private readonly manualProtection: ManualProtectionRepository = new ManualProtectionRepository(),
-    private readonly memos: MemoRepository = new MemoRepository()
+    private readonly memos: MemoRepository = new MemoRepository(),
+    private readonly timers: TimerService = new TimerService()
   ) {}
 
   private queueOperation<T>(operation: () => Promise<T>): Promise<T> {
@@ -157,7 +165,7 @@ export class TabRetentionService {
 
   private factsForTab(
     tab: IdentifiedTab,
-    memoTabIds: ReadonlySet<number>
+    protections: TabProtections
   ): OpenTabFacts {
     return {
       active: tab.active,
@@ -165,14 +173,24 @@ export class TabRetentionService {
       audible: tab.audible === true,
       incognito: tab.incognito,
       extensionPage: tabUrl(tab).startsWith(chrome.runtime.getURL("")),
-      hasMemo: memoTabIds.has(tab.id),
+      hasMemo: protections.memoTabIds.has(tab.id),
+      hasPendingTimer: protections.timerTabIds.has(tab.id),
     };
   }
 
-  /** 本文のあるメモが結びついている tabId。空メモは自動削除の保護対象にしない。 */
-  private async memoTabIds(): Promise<Set<number>> {
-    const summaries = await this.memos.listAttachedSummaries();
-    return new Set(summaries.map((summary) => summary.tabId));
+  /**
+   * 自動削除から外すべきタブ。保護の理由ごとに分けて持つ。
+   * 空のメモは「開いただけ」なので、保護の根拠にしない。
+   */
+  private async loadProtections(): Promise<TabProtections> {
+    const [summaries, timerTabIds] = await Promise.all([
+      this.memos.listAttachedSummaries(),
+      this.timers.pendingTabIds(),
+    ]);
+    return {
+      memoTabIds: new Set(summaries.map((summary) => summary.tabId)),
+      timerTabIds,
+    };
   }
 
   /**
@@ -525,7 +543,7 @@ export class TabRetentionService {
       const now = Date.now();
       const { state, runtime, tabs } = await this.refreshOpenTabState(now);
       const featureEnabledAt = state.featureEnabledAt ?? now;
-      const memoTabIds = await this.memoTabIds();
+      const protections = await this.loadProtections();
       const items: TabRetentionTabItem[] = tabs.map((tab) => {
         const record = state.records.get(tab.id) ?? this.createRecord(tab, now);
         return {
@@ -542,7 +560,7 @@ export class TabRetentionService {
           autoProtectionReason: record.autoProtectionReason,
           assessment: assessTabRetention(
             record,
-            this.factsForTab(tab, memoTabIds),
+            this.factsForTab(tab, protections),
             featureEnabledAt,
             now
           ),
@@ -568,14 +586,14 @@ export class TabRetentionService {
       const now = Date.now();
       const { state, runtime, tabs } = await this.refreshOpenTabState(now);
       const featureEnabledAt = state.featureEnabledAt ?? now;
-      const memoTabIds = await this.memoTabIds();
+      const protections = await this.loadProtections();
 
       for (const tab of tabs) {
         const record = state.records.get(tab.id);
         if (!record) continue;
         const assessment = assessTabRetention(
           record,
-          this.factsForTab(tab, memoTabIds),
+          this.factsForTab(tab, protections),
           featureEnabledAt,
           now
         );
@@ -598,7 +616,7 @@ export class TabRetentionService {
         }
         const finalAssessment = assessTabRetention(
           record,
-          this.factsForTab(freshTab, memoTabIds),
+          this.factsForTab(freshTab, protections),
           featureEnabledAt,
           Date.now()
         );
@@ -637,7 +655,7 @@ export class TabRetentionService {
         .filter(({ tab, record }) => {
           const assessment = assessTabRetention(
             record,
-            this.factsForTab(tab, memoTabIds),
+            this.factsForTab(tab, protections),
             featureEnabledAt,
             now
           );

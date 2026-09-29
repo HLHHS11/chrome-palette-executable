@@ -11,6 +11,7 @@ import tabRetentionSuggestions from "./popup/commands/tab-retention";
 import tabSearchSuggestions from "./popup/commands/tab-search";
 import switchTabSuggestions from "./popup/commands/tabs";
 import themeSuggestions from "./popup/commands/themes";
+import timerSuggestions from "./popup/commands/timer";
 import utilsCopyTabLinkSuggestions from "./popup/commands/utils-copy-tab-link";
 import utilsNotificationSuggestions from "./popup/commands/utils-notification";
 import verticalTabsSuggestions from "./popup/commands/vertical-tabs";
@@ -31,6 +32,7 @@ export function listLegacyCommands(pageUrl: URL | undefined): LegacyCommand[] {
     ...tabSearchSuggestions(),
     ...tabRetentionSuggestions(),
     ...memoSuggestions(),
+    ...timerSuggestions(),
     ...historySuggestions(),
     ...bookmarkSuggestions(),
     ...extenionsSuggestions(),

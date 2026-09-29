@@ -1,0 +1,74 @@
+.TimerList {
+  display: flex;
+  flex-direction: column;
+  outline: none;
+  max-height: 600px;
+  color: var(--text-color);
+
+  .timer_list_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--input-border-color);
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .timer_list_hint {
+    opacity: 0.65;
+    font-size: 11px;
+  }
+
+  .timer_list_rows {
+    overflow: auto;
+  }
+
+  .timer_row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    cursor: pointer;
+    padding: 9px 12px;
+
+    &.selected {
+      background-color: var(--entry-selected-background-color);
+      color: var(--entry-selected-text-color);
+    }
+  }
+
+  .timer_remaining {
+    flex: 0 0 auto;
+    font-weight: 600;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timer_row.fired .timer_remaining {
+    color: #b4690e;
+  }
+
+  .timer_body {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .timer_title {
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+
+  .timer_origin {
+    opacity: 0.7;
+    overflow: hidden;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .timer_list_empty {
+    opacity: 0.7;
+    padding: 24px 12px;
+    font-size: 13px;
+    text-align: center;
+  }
+}

@@ -18,6 +18,14 @@ import {
   restoreAutoDeletedTab,
   setTabRetentionProtection,
 } from "@pages/tab-retention/background";
+import {
+  listAllTimers,
+  listTabTimers,
+  moveTimerOverlay,
+  removeTimer,
+  reportTimersDue,
+  startTimer,
+} from "@pages/timer/background";
 
 import { notify } from "./notification";
 import { hideTabNumbers, showTabNumbers } from "./tab-numbering";
@@ -106,5 +114,29 @@ export const backgroundRoutes = [
   {
     name: "memo.forgetOrphan",
     handler: forgetOrphanMemo,
+  },
+  {
+    name: "timer.start",
+    handler: startTimer,
+  },
+  {
+    name: "timer.listForTab",
+    handler: listTabTimers,
+  },
+  {
+    name: "timer.listAll",
+    handler: listAllTimers,
+  },
+  {
+    name: "timer.remove",
+    handler: removeTimer,
+  },
+  {
+    name: "timer.moveOverlay",
+    handler: moveTimerOverlay,
+  },
+  {
+    name: "timer.reportDue",
+    handler: reportTimersDue,
   },
 ] as const satisfies readonly RpcRoute[];

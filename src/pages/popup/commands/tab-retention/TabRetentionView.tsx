@@ -9,6 +9,7 @@ import type {
   TabRetentionTabItem,
   UnmatchedManualProtection,
 } from "@pages/tab-retention";
+import { formatRemainingRough } from "@pages/timer";
 import {
   For,
   Show,
@@ -59,6 +60,7 @@ function describeTab(item: TabRetentionTabItem, now: number): string {
   const assessment = item.assessment;
   if (assessment.kind === "manual-protected") return "明示保持";
   if (assessment.kind === "memo-protected") return "メモがあるため保持";
+  if (assessment.kind === "timer-protected") return "リマインド予定のため保持";
   if (assessment.kind === "stale-recommended") return "削除を推奨";
   if (assessment.kind === "auto-protected") {
     return item.autoProtectionReason === "active-time"
@@ -83,7 +85,10 @@ function describeTab(item: TabRetentionTabItem, now: number): string {
   return reasonLabels[assessment.reason];
 }
 
-/** 一覧の棚分け。メモ保護は retention が normal のままでも自動保持に載せる。 */
+/**
+ * 一覧の棚分け。メモ保護とタイマー保護は、retention が normal のままでも
+ * 自動保持に載せる。どちらも「閉じてはいけない」という意味では同じ棚に属する。
+ */
 function matchesCategory(
   item: TabRetentionTabItem,
   target: TabRetentionCategory
@@ -93,11 +98,14 @@ function matchesCategory(
   if (target === "auto") {
     return (
       item.retention === "auto-protected" ||
-      item.assessment.kind === "memo-protected"
+      item.assessment.kind === "memo-protected" ||
+      item.assessment.kind === "timer-protected"
     );
   }
   return (
-    item.retention === "normal" && item.assessment.kind !== "memo-protected"
+    item.retention === "normal" &&
+    item.assessment.kind !== "memo-protected" &&
+    item.assessment.kind !== "timer-protected"
   );
 }
 
@@ -140,6 +148,28 @@ export default function TabRetentionView(props: {
   });
 
   const memoOf = (tabId: number): string | undefined => memos()?.get(tabId);
+
+  /** tabId -> 直近の期限。同じタブに複数あれば、いちばん近いものを見せる。 */
+  const [reminders] = createResource(async () => {
+    const response = await callBackgroundRpc({ name: "timer.listAll" });
+    if (!response.ok || !("data" in response)) return new Map<number, number>();
+    const nearest = new Map<number, number>();
+    for (const entry of response.data.entries) {
+      if (entry.tabId === undefined || entry.timer.status !== "pending")
+        continue;
+      const known = nearest.get(entry.tabId);
+      if (known === undefined || entry.timer.deadline < known) {
+        nearest.set(entry.tabId, entry.timer.deadline);
+      }
+    }
+    return nearest;
+  });
+
+  const reminderOf = (tabId: number): string | undefined => {
+    const deadline = reminders()?.get(tabId);
+    if (deadline === undefined) return undefined;
+    return `${formatRemainingRough(deadline - Date.now())}にリマインド`;
+  };
 
   const confirmMessage = (item: TabRetentionTabItem): string =>
     buildConfirmMessage(item, memoOf(item.tabId));
@@ -508,6 +538,11 @@ export default function TabRetentionView(props: {
                   <div class="retention_text">
                     <div class="retention_title">{title()}</div>
                     <div class="retention_url">{url()}</div>
+                    <Show
+                      when={row.kind === "tab" && reminderOf(row.item.tabId)}
+                    >
+                      {(text) => <div class="retention_reminder">{text()}</div>}
+                    </Show>
                     <Show when={row.kind === "tab" && memoOf(row.item.tabId)}>
                       {(text) => (
                         <div class="retention_memo" title={text()}>

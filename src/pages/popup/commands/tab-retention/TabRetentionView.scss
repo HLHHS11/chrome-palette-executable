@@ -160,6 +160,13 @@ li.TabRetentionEntry {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  // 戻る約束をしている行の期限。メモの網掛けと紛らわしくならないよう、
+  // 装飾を持たない 1 行として出す。
+  .retention_reminder {
+    opacity: 0.85;
+    margin-top: 3px;
+    font-size: 11px;
+  }
 
   .retention_metrics {
     display: flex;

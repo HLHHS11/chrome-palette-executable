@@ -1,12 +1,16 @@
 import "./App.scss";
 
-import type { Command } from "@core/command";
+import type { Command, CommandRunContext } from "@core/command";
 import InfiniteScroll from "solid-infinite-scroll";
 import {
   type Accessor,
+  For,
+  Show,
   createEffect,
   createMemo,
   createSignal,
+  onCleanup,
+  onMount,
 } from "solid-js";
 import { tinykeys } from "tinykeys";
 
@@ -20,7 +24,7 @@ const [inputValue, setInputValue] = inputSignal;
  * リストのキーボードナビゲーションと展開状態を司る private なフック。
  *
  * - `↑` / `↓` で選択 index を modular に移動
- * - `Enter` で `onEnter` を呼ぶ
+ * - `Enter` / `Cmd+Enter` で `onEnter` を呼ぶ (どちらで押されたかを伝える)
  * - `Space` で選択中行の展開トグル (入力欄にフォーカスがあるときは通常入力として透過)
  * - 入力文字列が変わったら選択と展開状態をリセット
  *
@@ -30,7 +34,7 @@ const [inputValue, setInputValue] = inputSignal;
  */
 function useListNavigation(
   getItems: Accessor<readonly Command[]>,
-  onEnter: (item: Command) => void
+  onEnter: (item: Command, intent: CommandRunContext["intent"]) => void
 ) {
   const [selectedI_internal, setSelectedI] = createSignal(0);
   const [expandedSet, setExpandedSet] = createSignal<ReadonlySet<number>>(
@@ -58,34 +62,44 @@ function useListNavigation(
   // `e.isComposing` は IME 入力中の keydown で true になる。
   const isImeComposing = (e: KeyboardEvent) => e.isComposing;
 
-  tinykeys(window, {
-    ArrowUp: (e) => {
-      if (isImeComposing(e)) return;
-      e.preventDefault();
-      setSelectedI((i) => i - 1);
-    },
-    ArrowDown: (e) => {
-      if (isImeComposing(e)) return;
-      e.preventDefault();
-      setSelectedI((i) => i + 1);
-    },
-    Enter: (e) => {
-      if (isImeComposing(e)) return;
-      e.preventDefault();
-      const item = getItems()[selectedI()];
-      if (item !== undefined) onEnter(item);
-    },
-    Space: (e) => {
-      // 入力欄フォーカス中の Space は通常入力 / IME 変換に透過させる。
-      if (isInputFocused() || isImeComposing(e)) return;
-      e.preventDefault();
-      const idx = selectedI();
-      const next = new Set<number>(expandedSet());
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      setExpandedSet(next);
-    },
-  });
+  // 詳細ビューへ切り替わると、この枠は外される。購読を残すと、外れた後の
+  // Enter や Cmd+Enter でコマンドが二重に走る。
+  onCleanup(
+    tinykeys(window, {
+      ArrowUp: (e) => {
+        if (isImeComposing(e)) return;
+        e.preventDefault();
+        setSelectedI((i) => i - 1);
+      },
+      ArrowDown: (e) => {
+        if (isImeComposing(e)) return;
+        e.preventDefault();
+        setSelectedI((i) => i + 1);
+      },
+      Enter: (e) => {
+        if (isImeComposing(e)) return;
+        e.preventDefault();
+        const item = getItems()[selectedI()];
+        if (item !== undefined) onEnter(item, "primary");
+      },
+      "$mod+Enter": (e) => {
+        if (isImeComposing(e)) return;
+        e.preventDefault();
+        const item = getItems()[selectedI()];
+        if (item !== undefined) onEnter(item, "secondary");
+      },
+      Space: (e) => {
+        // 入力欄フォーカス中の Space は通常入力 / IME 変換に透過させる。
+        if (isInputFocused() || isImeComposing(e)) return;
+        e.preventDefault();
+        const idx = selectedI();
+        const next = new Set<number>(expandedSet());
+        if (next.has(idx)) next.delete(idx);
+        else next.add(idx);
+        setExpandedSet(next);
+      },
+    })
+  );
 
   return {
     selectedI,
@@ -110,7 +124,7 @@ export default function PaletteShell(props: {
   /** リストに表示する Command 配列。フィルタ済み・順序確定済み。 */
   commands: Accessor<Command[]>;
   /** クリック / Enter で発火するアクション。 */
-  onSelect: (command: Command) => void;
+  onSelect: (command: Command, context: CommandRunContext) => void;
   /** リスト末端到達時にもっと読み込む通知。 */
   onLoadMore: () => void;
 }) {
@@ -120,9 +134,58 @@ export default function PaletteShell(props: {
   // props を読み直すよう、薄いラッパーで包む。
   const nav = useListNavigation(
     () => props.commands(),
-    (item) => props.onSelect(item)
+    (item, intent) => run(item, intent)
   );
   let inputRef: HTMLInputElement | undefined;
+  const argRefs: (HTMLInputElement | undefined)[] = [];
+
+  const [argValues, setArgValues] = createSignal<Record<string, string>>({});
+  const activeArgs = createMemo(
+    () => props.commands()[nav.selectedI()]?.args ?? []
+  );
+
+  // 選択が別の行へ移ったら、打ち込んだ値は捨てる。前のコマンド宛ての値が
+  // 残ったまま実行されるのを防ぐ。
+  createEffect(() => {
+    nav.selectedI();
+    inputValue();
+    setArgValues({});
+  });
+
+  const run = (command: Command, intent: CommandRunContext["intent"]) => {
+    props.onSelect(command, { args: argValues(), intent });
+  };
+
+  /** 検索欄と各引数欄を 1 つの輪と見なして、フォーカスを送る。 */
+  const moveArgFocus = (step: number) => {
+    const fields = [inputRef, ...argRefs.slice(0, activeArgs().length)].filter(
+      (el): el is HTMLInputElement => el !== undefined
+    );
+    if (fields.length <= 1) return;
+    const current = fields.indexOf(document.activeElement as HTMLInputElement);
+    const base = current < 0 ? 0 : current;
+    const next = fields[(base + step + fields.length) % fields.length];
+    next.focus();
+    next.select();
+  };
+
+  onMount(() => {
+    const onKeydown = (e: KeyboardEvent) => {
+      if (activeArgs().length === 0) return;
+      if (e.key === "Tab") {
+        e.preventDefault();
+        moveArgFocus(e.shiftKey ? -1 : 1);
+        return;
+      }
+      // 引数欄から抜けるだけ。ポップアップを閉じる既定の動作には渡さない。
+      if (e.key === "Escape" && document.activeElement !== inputRef) {
+        e.preventDefault();
+        inputRef?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeydown, true);
+    onCleanup(() => window.removeEventListener("keydown", onKeydown, true));
+  });
 
   createEffect(() => {
     const range = takeInputSelectionRange();
@@ -155,6 +218,26 @@ export default function PaletteShell(props: {
             setInputValue(e.target.value);
           }}
         />
+        <Show when={activeArgs().length > 0}>
+          <div class="args">
+            <For each={activeArgs()}>
+              {(arg, i) => (
+                <input
+                  class="arg"
+                  ref={(el) => (argRefs[i()] = el)}
+                  placeholder={arg.placeholder}
+                  value={argValues()[arg.name] ?? ""}
+                  onInput={(e) =>
+                    setArgValues({
+                      ...argValues(),
+                      [arg.name]: e.target.value,
+                    })
+                  }
+                />
+              )}
+            </For>
+          </div>
+        </Show>
         <Shortcut
           onClick={() =>
             chrome.tabs.create({ url: "chrome://extensions/shortcuts" })
@@ -174,7 +257,7 @@ export default function PaletteShell(props: {
               isSelected={i() === nav.selectedI()}
               isExpanded={nav.isExpanded(i())}
               command={command}
-              onSelect={props.onSelect}
+              onSelect={(selected) => run(selected, "primary")}
             />
           )}
         </InfiniteScroll>

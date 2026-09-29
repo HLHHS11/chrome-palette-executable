@@ -1,5 +1,6 @@
 import {
   type Command,
+  type CommandRunContext,
   type RpcCommand,
   runRpcCommandInPopup,
 } from "@core/command";
@@ -29,6 +30,9 @@ import {
   type TabSnapshot,
   collectTabSnapshots,
 } from "./commands/tab-search";
+import TimerFormView from "./commands/timer/TimerFormView";
+import TimerListView from "./commands/timer/TimerListView";
+import { EMPTY_DURATION_FIELDS, timerView } from "./commands/timer/view-intent";
 import {
   VERTICAL_TABS_KEYWORD,
   type VerticalTabItem,
@@ -140,7 +144,12 @@ const filteredCommands = createMemo<Command[]>(() => {
   return hits.map((h) => h.item);
 });
 
-const runCommand = async (command: Command) => {
+const timerFormFields = createMemo(() => {
+  const view = timerView();
+  return view?.kind === "form" ? view.fields : null;
+});
+
+const runCommand = async (command: Command, context: CommandRunContext) => {
   try {
     const service = rankingService();
     if (service) {
@@ -157,7 +166,7 @@ const runCommand = async (command: Command) => {
     return;
   }
   if (command.url) chrome.tabs.create({ url: command.url });
-  command.handler?.();
+  command.handler?.(context);
 };
 
 const App = () => {
@@ -251,6 +260,10 @@ const App = () => {
           items={() => verticalTabs() ?? []}
           onSelect={selectVerticalTab}
         />
+      ) : timerView()?.kind === "list" ? (
+        <TimerListView />
+      ) : timerFormFields() !== null ? (
+        <TimerFormView initial={timerFormFields() ?? EMPTY_DURATION_FIELDS} />
       ) : isTabRetentionMode() ? (
         <TabRetentionView
           initialCategory={tabRetentionLaunchIntent()?.category ?? "closing"}

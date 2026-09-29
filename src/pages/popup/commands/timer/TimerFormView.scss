@@ -1,0 +1,57 @@
+.TimerForm {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px 12px;
+  color: var(--text-color);
+
+  .form_row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+
+    label {
+      flex: 0 0 72px;
+      opacity: 0.8;
+      font-size: 13px;
+      text-align: right;
+    }
+
+    input,
+    select {
+      flex: 1 1 auto;
+      appearance: none;
+      box-sizing: border-box;
+      outline: 0;
+      border: 0.5px solid var(--input-border-color);
+      border-radius: 8px;
+      background-color: var(--app-background-color);
+      padding: 8px 10px;
+      color: var(--text-color);
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--text-color);
+    }
+  }
+
+  .form_error {
+    padding: 8px 0 0 84px;
+    color: #d14343;
+    font-size: 12px;
+  }
+
+  .form_footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    opacity: 0.7;
+    margin-top: 12px;
+    border-top: 0.5px solid var(--input-border-color);
+    padding-top: 10px;
+    font-size: 12px;
+  }
+}

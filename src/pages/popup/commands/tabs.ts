@@ -1,5 +1,6 @@
 import type { Command } from "@core/command";
 import { createRuntimeRpcClient } from "@core/rpc";
+import { formatRemainingRough } from "@pages/timer";
 import { backgroundRoutes } from "@src/pages/background/routes";
 
 import niceUrl from "~/util/nice-url";
@@ -20,16 +21,40 @@ async function loadMemosByTabId(): Promise<Map<number, string>> {
   return new Map(response.data.memos.map(({ tabId, text }) => [tabId, text]));
 }
 
+/** 直近の期限だけを見せる。同じタブに複数あっても、次に鳴るものが分かれば足りる。 */
+async function loadNextDeadlineByTabId(): Promise<Map<number, number>> {
+  const response = await callRuntimeRpc({ name: "timer.listAll" }).catch(
+    () => undefined
+  );
+  if (!response?.ok || !("data" in response)) return new Map();
+  const nearest = new Map<number, number>();
+  for (const { tabId, timer } of response.data.entries) {
+    if (tabId === undefined || timer.status !== "pending") continue;
+    const known = nearest.get(tabId);
+    if (known === undefined || timer.deadline < known) {
+      nearest.set(tabId, timer.deadline);
+    }
+  }
+  return nearest;
+}
+
 const commands = createLazyResource<Command[]>([], async () => {
-  const [allTabs, memosByTabId] = await Promise.all([
+  const [allTabs, memosByTabId, deadlineByTabId] = await Promise.all([
     chrome.tabs.query({}),
     loadMemosByTabId(),
+    loadNextDeadlineByTabId(),
   ]);
+  const now = Date.now();
   return allTabs.map(({ title, url, id, windowId }) => {
     url ||= "";
+    const deadline = id === undefined ? undefined : deadlineByTabId.get(id);
+    const reminder =
+      deadline === undefined
+        ? ""
+        : ` · ${formatRemainingRough(deadline - now)}にリマインド`;
     return {
       title: title || "Untitled",
-      subtitle: niceUrl(url),
+      subtitle: `${niceUrl(url)}${reminder}`,
       icon: faviconURL(url),
       memo: id === undefined ? undefined : memosByTabId.get(id),
       handler: () => {

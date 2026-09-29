@@ -13,6 +13,16 @@ type InputSelectionRange = {
 const [inputSelectionRange, setInputSelectionRange] =
   createSignal<InputSelectionRange | null>(null);
 
+/**
+ * 入力の先頭に付いた `t>` のような印を、キーワードと残りの語に分ける。
+ *
+ * この印が活きるのは、語を打ち続けることが操作の中心にあり、打つそばから
+ * 候補が絞られていく機能に限られる。全文検索の `s>` がその例で、あの印は
+ * 「打ち始めた瞬間に検索が立ち上がり、直前の状態が戻っている」ことまで伝える。
+ *
+ * 矢印キーで行を選ぶ一覧や、複数の入力欄を行き来する画面は当てはまらない。
+ * 絞り込みの語を打つ場所が無いためである。それらはコマンドから専用の表示を開く。
+ */
 export const parsedInput = createMemo(() => {
   const [match, keyword, query] = input().match(/^([a-zA-Z]+)>(.*)/) || [];
   return {

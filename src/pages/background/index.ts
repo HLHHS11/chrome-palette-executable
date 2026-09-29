@@ -2,6 +2,7 @@ import { HotkeyLauncher } from "@core/hotkey";
 import { registerRoutes } from "@core/rpc";
 import { bindMemo } from "@pages/memo/background";
 import { bindTabRetention } from "@pages/tab-retention/background";
+import { bindTimer } from "@pages/timer/background";
 
 import { tabSearchHotkey } from "~/commands/tab-search/launch";
 
@@ -14,6 +15,7 @@ bindNotificationClickHandler();
 bindTabNumberingAutoHide();
 bindTabRetention();
 bindMemo();
+bindTimer();
 
 const hotkeyLauncher = new HotkeyLauncher();
 hotkeyLauncher.register(tabSearchHotkey);

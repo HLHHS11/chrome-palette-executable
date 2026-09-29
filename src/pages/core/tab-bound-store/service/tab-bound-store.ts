@@ -89,6 +89,21 @@ export class TabBoundStore<T> {
   }
 
   /**
+   * レコード ID を指定して値だけ差し替える。結びつきと binding は変えない。
+   *
+   * タブに結びついていないレコードも書き換えられる点が `set` との違い。
+   * タイマーのように、タブが閉じられた後も期限が来れば状態が進む値のための入口。
+   */
+  async setValue(recordId: TabBoundRecordId, value: T): Promise<boolean> {
+    const [records, assignments] = await this.load();
+    const index = records.findIndex((r) => r.id === recordId);
+    if (index < 0) return false;
+    records[index] = { ...records[index], value, updatedAt: this.now() };
+    await this.persist(records, assignments);
+    return true;
+  }
+
+  /**
    * タブの現在の状態を binding に反映する。値は変えない。
    * 遷移やタブ移動のたびに呼ぶことで、再結合の手がかりを新鮮に保つ。
    */

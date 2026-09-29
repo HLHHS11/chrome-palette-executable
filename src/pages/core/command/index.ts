@@ -11,7 +11,9 @@ export { stringifyCommandKeybind } from "./display";
 
 export type {
   Command,
+  CommandArg,
   CommandKeybind,
+  CommandRunContext,
   LegacyCommand,
   PaletteRow,
   RpcCommand,

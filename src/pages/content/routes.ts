@@ -25,6 +25,7 @@ import {
   restoreTabNumberingTitle,
 } from "./tab-numbering";
 import { getPageText } from "./tab-search-page-actions";
+import { refreshTimerOverlay } from "./timer-overlay";
 
 export const routes = [
   { name: "chatgpt.enableWebSearch", handler: enableChatGptWebSearch },
@@ -58,4 +59,5 @@ export const routes = [
   { name: "tabSearch.getPageText", handler: getPageText },
   { name: "memo.refreshOverlay", handler: refreshMemoOverlay },
   { name: "memo.focusOverlay", handler: focusMemoOverlay },
+  { name: "timer.refreshOverlay", handler: refreshTimerOverlay },
 ] as const satisfies readonly RpcRoute[];

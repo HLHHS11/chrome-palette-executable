@@ -21,6 +21,7 @@ const unblocked: OpenTabFacts = {
   incognito: false,
   extensionPage: false,
   hasMemo: false,
+  hasPendingTimer: false,
 };
 
 function normalRecord(
@@ -93,6 +94,37 @@ describe("tab retention policy", () => {
     assert.equal(
       assessTabRetention(record, { ...unblocked, hasMemo: true }, 0, now).kind,
       "memo-protected"
+    );
+  });
+
+  it("keeps a tab with a pending timer instead of delete-eligible", () => {
+    const record = normalRecord({
+      lastUsedAt: now - TAB_RETENTION_POLICY.normalInactiveMs * 2,
+    });
+    assert.equal(
+      assessTabRetention(
+        record,
+        { ...unblocked, hasPendingTimer: true },
+        0,
+        now
+      ).kind,
+      "timer-protected"
+    );
+  });
+
+  it("does not recommend stale cleanup while a timer is pending", () => {
+    const record = normalRecord({
+      retention: "auto-protected",
+      lastUsedAt: now - TAB_RETENTION_POLICY.staleAfterMs,
+    });
+    assert.equal(
+      assessTabRetention(
+        record,
+        { ...unblocked, hasPendingTimer: true },
+        0,
+        now
+      ).kind,
+      "auto-protected"
     );
   });
 

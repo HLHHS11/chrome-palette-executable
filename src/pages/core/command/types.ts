@@ -18,6 +18,29 @@ export type CommandKeybind = {
 
 type NonEmptyArray<T> = readonly [T, ...T[]];
 
+/**
+ * コマンドが候補に挙がった時点で、その場に打ち込める小さな入力欄。
+ *
+ * 「5 分後のタイマー」のように、値がひとつ決まれば実行できるコマンドのための
+ * 仕組み。専用の画面を開かずに済ませられる。
+ */
+export type CommandArg = {
+  /** 実行時に値を引くための名前。 */
+  name: string;
+  placeholder: string;
+};
+
+/** コマンドを実行するときに、パレットから渡される状況。 */
+export type CommandRunContext = {
+  /** `CommandArg.name` をキーにした入力値。未入力は空文字。 */
+  args: Record<string, string>;
+  /**
+   * どのキーで実行されたか。Enter が `primary`、Cmd+Enter が `secondary`。
+   * 2 つの意味をどう割り当てるかはコマンド側が決める。
+   */
+  intent: "primary" | "secondary";
+};
+
 type CommandBase = {
   title: string;
   subtitle?: string;
@@ -46,10 +69,12 @@ type CommandBase = {
    * 重複していない行では undefined。
    */
   duplicateHighlightColor?: DuplicateHighlightColor;
+  /** 入力欄の右に並べる引数。選択中の行のものだけが表示される。 */
+  args?: readonly CommandArg[];
 };
 
 export type LegacyCommand = CommandBase & {
-  handler?: () => unknown;
+  handler?: (context: CommandRunContext) => unknown;
 };
 
 //

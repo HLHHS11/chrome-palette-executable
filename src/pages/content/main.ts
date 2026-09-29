@@ -9,6 +9,7 @@ import { initMemoOverlay } from "./memo-overlay";
 import { routes } from "./routes";
 import { startRovoNotifier } from "./rovo-notifier";
 import { initTabNumberingHints } from "./tab-numbering";
+import { initTimerOverlay } from "./timer-overlay";
 
 // NOTE: 下記は公式なバージョン表記ではなく、開発中に正しく変更が正しくロードされたかチェックするためのもの
 console.log("[chrome-palette] content initialized: v0.0.15");
@@ -28,3 +29,4 @@ startRovoNotifier();
 initGmailLatestHashNavigation();
 initTabNumberingHints();
 void initMemoOverlay();
+void initTimerOverlay();
