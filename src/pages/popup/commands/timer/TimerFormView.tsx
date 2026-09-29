@@ -126,7 +126,6 @@ export default function TimerFormView(props: { initial: DurationFields }) {
         <label for="timer-title">タイトル</label>
         <input
           id="timer-title"
-          placeholder="CI待ち"
           value={title()}
           onInput={(e) => setTitle(e.target.value)}
         />

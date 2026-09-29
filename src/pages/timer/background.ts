@@ -5,6 +5,7 @@ import type {
   RpcVoidResponseBody,
 } from "@core/rpc";
 import {
+  playShortSound,
   startPersistentSound,
   stopPersistentSound,
 } from "@pages/background/notification-sound";
@@ -72,9 +73,11 @@ function notifyFired(fired: FiredTimer): void {
     // Windows などでは通知が消えなくなる。macOS では効かないため、
     // 消えない側の役割はページ上のオーバーレイが担う。
     requireInteraction: true,
-    silent: fired.timer.sound !== "default",
+    // 音は鳴らし方の指定に沿って自前で出す。通知にも鳴らさせると二重になる。
+    silent: true,
     priority: 2,
   });
+  if (fired.timer.sound === "default") void playShortSound();
   if (fired.timer.sound === "persistent") void startPersistentSound();
 }
 
