@@ -1,3 +1,4 @@
+import { bindDrag, clampToViewport } from "@core/page-overlay";
 import {
   type RpcResponse,
   type RpcVoidResponseBody,
@@ -350,27 +351,6 @@ function createOverlay(): OverlayHandle {
 }
 
 /**
- * 保存された位置を、そのウィンドウで実際に見える位置へ寄せる。
- *
- * 丸めるのは表示位置だけで保存値は触らない。ウィンドウが元の幅に戻れば
- * 元の位置に戻る。付箋の方がウィンドウより大きければ 0 に寄せ、
- * 少なくともヘッダを掴める状態は保つ。
- */
-function clampToViewport(
-  x: number,
-  y: number,
-  width: number,
-  height: number
-): { x: number; y: number } {
-  const maxX = Math.max(0, window.innerWidth - width);
-  const maxY = Math.max(0, window.innerHeight - height);
-  return {
-    x: Math.min(Math.max(0, x), maxX),
-    y: Math.min(Math.max(0, y), maxY),
-  };
-}
-
-/**
  * 初めて描くときの位置。右寄りで、高さは中央。
  *
  * 左上に出すと、ページ側のロゴ・ナビゲーション・パンくずと重なりやすい。
@@ -405,51 +385,6 @@ function iconButton(
   button.title = title;
   if (className) button.className = className;
   return button;
-}
-
-/**
- * ヘッダを掴んでの移動。移動はこの機能の必須要件なので、
- * ビューポート外に出て掴めなくなることがないよう位置を丸める。
- */
-function bindDrag(
-  handleEl: HTMLElement,
-  panel: HTMLElement,
-  readOrigin: () => { x: number; y: number } | null,
-  onMove: (x: number, y: number) => void
-): void {
-  handleEl.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
-    const target = event.target as HTMLElement;
-    if (target.tagName === "BUTTON") return;
-    const origin = readOrigin();
-    if (!origin) return;
-
-    event.preventDefault();
-    handleEl.setPointerCapture(event.pointerId);
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const originX = origin.x;
-    const originY = origin.y;
-
-    const onPointerMove = (move: PointerEvent): void => {
-      // 端まで持っていってもヘッダが必ず残るようにクランプする。
-      const { x, y } = clampToViewport(
-        originX + move.clientX - startX,
-        originY + move.clientY - startY,
-        panel.offsetWidth,
-        panel.offsetHeight
-      );
-      onMove(Math.round(x), Math.round(y));
-    };
-    const onPointerUp = (): void => {
-      handleEl.removeEventListener("pointermove", onPointerMove);
-      handleEl.removeEventListener("pointerup", onPointerUp);
-      handleEl.removeEventListener("pointercancel", onPointerUp);
-    };
-    handleEl.addEventListener("pointermove", onPointerMove);
-    handleEl.addEventListener("pointerup", onPointerUp);
-    handleEl.addEventListener("pointercancel", onPointerUp);
-  });
 }
 
 interface PanelBox {
