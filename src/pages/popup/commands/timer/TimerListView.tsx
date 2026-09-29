@@ -16,7 +16,6 @@ import {
 import { tinykeys } from "tinykeys";
 
 import { closeTimerView } from "./view-intent";
-import type { TimerListAction } from "./view-intent";
 
 const callBackgroundRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
@@ -26,11 +25,10 @@ const TICK_MS = 500;
 /**
  * 仕掛けているタイマーの一覧。
  *
- * 止めに来たときは Enter をそのまま停止に充てる。見に来たときは Enter で
- * 待っていたタブへ戻り、Control+x で止める。タブが閉じられていたタイマーでは、
- * 戻る先として記録された URL を開き直す。
+ * Enter で待っていたタブへ戻り、Control+x で止める。タブが閉じられていた
+ * タイマーでは、戻る先として記録された URL を開き直す。
  */
-export default function TimerListView(props: { action: TimerListAction }) {
+export default function TimerListView() {
   const [entries, { refetch }] = createResource<TimerEntry[]>(async () => {
     const response = await callBackgroundRpc({ name: "timer.listAll" });
     if (!response.ok || !("data" in response)) return [];
@@ -68,16 +66,6 @@ export default function TimerListView(props: { action: TimerListAction }) {
     await refetch();
   };
 
-  /** 行を選んだときの操作。止めに来たのか、見に来たのかで変わる。 */
-  const activateRow = async (entry: TimerEntry | undefined): Promise<void> => {
-    if (props.action !== "stop") {
-      await activate(entry);
-      return;
-    }
-    await stop(entry);
-    window.close();
-  };
-
   onMount(() => {
     const ticking = setInterval(() => setNow(Date.now()), TICK_MS);
     const unsubscribe = tinykeys(window, {
@@ -91,7 +79,7 @@ export default function TimerListView(props: { action: TimerListAction }) {
       },
       Enter: (event) => {
         event.preventDefault();
-        void activateRow(rows()[selectedIndex()]);
+        void activate(rows()[selectedIndex()]);
       },
       "Control+x": (event) => {
         event.preventDefault();
@@ -116,11 +104,9 @@ export default function TimerListView(props: { action: TimerListAction }) {
   return (
     <div class="TimerList">
       <div class="timer_list_header">
-        <span>{props.action === "stop" ? "タイマーを止める" : "タイマー"}</span>
+        <span>タイマー</span>
         <span class="timer_list_hint">
-          {props.action === "stop"
-            ? "Enter で停止 / Esc で戻る"
-            : "Enter で移動 / Control+x で停止 / Esc で戻る"}
+          Enter で移動 / Control+x で停止 / Esc で戻る
         </span>
       </div>
       <Show
@@ -138,7 +124,7 @@ export default function TimerListView(props: { action: TimerListAction }) {
                   selected: index() === selectedIndex(),
                   fired: entry.timer.status === "fired",
                 }}
-                onClick={() => void activateRow(entry)}
+                onClick={() => void activate(entry)}
               >
                 <span class="timer_remaining">{remainingOf(entry)}</span>
                 <div class="timer_body">

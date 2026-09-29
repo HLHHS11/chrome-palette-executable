@@ -28,17 +28,21 @@ const entries = createLazyResource<TimerEntry[]>([], async () => {
 });
 
 /**
- * 止める / 片付ける対象。鳴り終えたものを先に置く。
+ * 止める順。鳴り終えたものを先に置き、その先は新しく仕掛けたものから消す。
  *
- * 鳴り終えたタイマーは、通知とページ上の表示が残ったままになっている。
- * 音の有無にかかわらず、それをキーボードだけで消せる必要がある。
+ * 鳴り終えたタイマーは通知とページ上の表示が残ったままなので、音の有無に
+ * かかわらず、まずそれを黙らせたい。残りのうち関心が近いのは、たった今
+ * 自分で仕掛けたものである。
  */
 const stoppableTimers = (): TimerEntry[] => {
   const all = entries();
-  return [
-    ...all.filter((entry) => entry.timer.status === "fired"),
-    ...all.filter((entry) => entry.timer.status === "pending"),
-  ];
+  const fired = all
+    .filter((entry) => entry.timer.status === "fired")
+    .sort((a, b) => (b.timer.firedAt ?? 0) - (a.timer.firedAt ?? 0));
+  const pending = all
+    .filter((entry) => entry.timer.status === "pending")
+    .sort((a, b) => b.timer.startedAt - a.timer.startedAt);
+  return [...fired, ...pending];
 };
 
 /** 入力された時間でタイマーを仕掛ける。タイトルと鳴らし方は既定のまま。 */
@@ -94,8 +98,9 @@ const commands: Command[] = [
 ];
 
 /**
- * 1 本しかないなら、選ばせずにその場で止める。止めたいものがひとつしかない
- * 状況が大半で、そこに一覧を挟んでも選択の手間が増えるだけ。
+ * 選ばせずに 1 本ずつ止める。複数あっても順に呼べば消えていくので、
+ * 素早く黙らせたいだけの用に選択の手間を挟まない。
+ * どれを残すかまで決めたいときは、一覧から選ぶ。
  */
 function stopCommands(): Command[] {
   const stoppable = stoppableTimers();
@@ -106,10 +111,6 @@ function stopCommands(): Command[] {
       subtitle: "タイマーを止める",
       icon: faviconURL("about:blank"),
       handler: () => {
-        if (stoppable.length > 1) {
-          openTimerList("stop");
-          return;
-        }
         void stopTimer(stoppable[0].timer.id)
           .then(() => window.close())
           .catch((e: unknown) => setInput(`エラーが発生しました。詳細: ${e}`));
@@ -127,7 +128,7 @@ function manageCommands(): Command[] {
       title: `Timer: Manage Timers (${count})`,
       subtitle: "タイマーを管理する",
       icon: faviconURL("about:blank"),
-      handler: () => openTimerList("manage"),
+      handler: () => openTimerList(),
     },
   ];
 }
