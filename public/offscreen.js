@@ -6,10 +6,17 @@
 // 素の JavaScript で書く。
 
 const RING_INTERVAL_MS = 1400;
+/**
+ * 鳴らし続ける上限。席を外している間にいつまでも鳴っているのは、
+ * 気付かせる役に立たないうえに迷惑でしかない。
+ * 音が止まっても通知は残るので、戻ってきたときに気付ける。
+ */
+const MAX_RING_MS = 60 * 1000;
 const TONES = [880, 1174.7];
 
 let audioContext = null;
 let ringTimer = null;
+let ringDeadline = null;
 
 function playChime() {
   if (audioContext === null) audioContext = new AudioContext();
@@ -34,13 +41,16 @@ function playChime() {
 function startRinging() {
   if (ringTimer !== null) return;
   playChime();
+  ringDeadline = setTimeout(stopRinging, MAX_RING_MS);
   ringTimer = setInterval(playChime, RING_INTERVAL_MS);
 }
 
 function stopRinging() {
   if (ringTimer === null) return;
   clearInterval(ringTimer);
+  clearTimeout(ringDeadline);
   ringTimer = null;
+  ringDeadline = null;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

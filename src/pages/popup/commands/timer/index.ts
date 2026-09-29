@@ -27,8 +27,19 @@ const entries = createLazyResource<TimerEntry[]>([], async () => {
   return response.data.entries;
 });
 
-const runningTimers = (): TimerEntry[] =>
-  entries().filter((entry) => entry.timer.status === "pending");
+/**
+ * 止める / 片付ける対象。鳴り終えたものを先に置く。
+ *
+ * 鳴り終えたタイマーは、通知とページ上の表示が残ったままになっている。
+ * 音の有無にかかわらず、それをキーボードだけで消せる必要がある。
+ */
+const stoppableTimers = (): TimerEntry[] => {
+  const all = entries();
+  return [
+    ...all.filter((entry) => entry.timer.status === "fired"),
+    ...all.filter((entry) => entry.timer.status === "pending"),
+  ];
+};
 
 /** 入力された時間でタイマーを仕掛ける。タイトルと鳴らし方は既定のまま。 */
 async function startTimer(fields: DurationFields): Promise<void> {
@@ -83,23 +94,23 @@ const commands: Command[] = [
 ];
 
 /**
- * 1 本だけ動いているなら、選ばせずにその場で止める。止めたいものが
- * ひとつしかない状況が大半で、そこに一覧を挟んでも選択の手間が増えるだけ。
+ * 1 本しかないなら、選ばせずにその場で止める。止めたいものがひとつしかない
+ * 状況が大半で、そこに一覧を挟んでも選択の手間が増えるだけ。
  */
 function stopCommands(): Command[] {
-  const running = runningTimers();
-  if (running.length === 0) return [];
+  const stoppable = stoppableTimers();
+  if (stoppable.length === 0) return [];
   return [
     {
       title: "Timer: Stop Running Timer",
-      subtitle: "動いているタイマーを止める",
+      subtitle: "タイマーを止める",
       icon: faviconURL("about:blank"),
       handler: () => {
-        if (running.length > 1) {
+        if (stoppable.length > 1) {
           openTimerList("stop");
           return;
         }
-        void stopTimer(running[0].timer.id)
+        void stopTimer(stoppable[0].timer.id)
           .then(() => window.close())
           .catch((e: unknown) => setInput(`エラーが発生しました。詳細: ${e}`));
       },

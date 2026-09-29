@@ -26,9 +26,9 @@ const TICK_MS = 500;
 /**
  * 仕掛けているタイマーの一覧。
  *
- * 止めに来たときは、まだ鳴っていないものだけを並べ、Enter をそのまま停止に
- * 充てる。見に来たときは Enter で待っていたタブへ戻り、Control+x で止める。
- * タブが閉じられていたタイマーでは、戻る先として記録された URL を開き直す。
+ * 止めに来たときは Enter をそのまま停止に充てる。見に来たときは Enter で
+ * 待っていたタブへ戻り、Control+x で止める。タブが閉じられていたタイマーでは、
+ * 戻る先として記録された URL を開き直す。
  */
 export default function TimerListView(props: { action: TimerListAction }) {
   const [entries, { refetch }] = createResource<TimerEntry[]>(async () => {
@@ -40,11 +40,7 @@ export default function TimerListView(props: { action: TimerListAction }) {
   const [now, setNow] = createSignal(Date.now());
   const [selectedInternal, setSelectedInternal] = createSignal(0);
 
-  const rows = createMemo(() => {
-    const all = entries() ?? [];
-    if (props.action !== "stop") return all;
-    return all.filter((entry) => entry.timer.status === "pending");
-  });
+  const rows = createMemo(() => entries() ?? []);
   const selectedIndex = createMemo(() => {
     const count = rows().length;
     if (count <= 0) return 0;
@@ -130,11 +126,7 @@ export default function TimerListView(props: { action: TimerListAction }) {
       <Show
         when={rows().length > 0}
         fallback={
-          <div class="timer_list_empty">
-            {props.action === "stop"
-              ? "動いているタイマーはありません"
-              : "仕掛けているタイマーはありません"}
-          </div>
+          <div class="timer_list_empty">仕掛けているタイマーはありません</div>
         }
       >
         <div class="timer_list_rows">
