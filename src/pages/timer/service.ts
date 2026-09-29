@@ -194,9 +194,14 @@ export class TimerService {
     return tabIds;
   }
 
-  /** タブを閉じても期限は生きている。結びつきだけ解く。 */
+  /**
+   * タブを閉じても期限は生きている。結びつきだけ解く。
+   * 宙に浮いたタイマーが生まれるのはこの瞬間だけなので、期限切れの
+   * 後始末もここで済ませる。
+   */
   async detach(tabId: number): Promise<void> {
     await this.repository.detach(tabId);
+    await this.repository.pruneExpiredOrphans();
   }
 
   async syncBinding(tabId: number): Promise<void> {

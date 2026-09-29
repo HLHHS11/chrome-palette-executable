@@ -102,16 +102,18 @@ export class MemoRepository {
     return summaries;
   }
 
+  /** 期限の切れた孤児を捨てる。保存領域が増える一方にならないための後始末。 */
+  async pruneExpiredOrphans(): Promise<void> {
+    await this.store.pruneExpiredOrphans();
+  }
+
   /**
    * 指定した URL のタブが引き継げる、宙に浮いたメモ。新しいものを先に返す。
    *
    * 絞り込みは自動の再結合と同じく URL の完全一致。同じサイトでも別のページ
    * (別の会話・別の動画) は互いに無関係で、混ぜると選びたいものが埋もれる。
-   *
-   * 増える一方にならないよう、読むついでに期限切れを片付ける。
    */
   async listOrphansForUrl(url: string): Promise<OrphanMemo[]> {
-    await this.store.pruneExpiredOrphans();
     const orphans = await this.store.orphans();
     return orphans
       .filter(

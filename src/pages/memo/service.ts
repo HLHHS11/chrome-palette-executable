@@ -86,6 +86,9 @@ export class MemoService {
   /**
    * タブを閉じたときは結びつきだけ解く。復元されれば再結合できる。
    * ただし何も書かれていないメモは抱えておく意味がないので捨てる。
+   *
+   * 宙に浮いたメモが生まれるのはこの瞬間だけなので、期限切れの後始末も
+   * ここで済ませる。
    */
   async detach(tabId: number): Promise<void> {
     const memo = await this.repository.findByTabId(tabId);
@@ -94,6 +97,7 @@ export class MemoService {
       return;
     }
     await this.repository.detach(tabId);
+    await this.repository.pruneExpiredOrphans();
   }
 
   /** タブの URL や位置が変わったら、再結合の手がかりを更新しておく。 */
@@ -127,6 +131,7 @@ export class MemoService {
    * 決めきれなかったものは宙に浮いたまま残し、ユーザーに選ばせる。
    */
   async rematchAll(): Promise<{ matched: number; unmatched: number }> {
+    await this.repository.pruneExpiredOrphans();
     const tabs = await chrome.tabs.query({});
     const outcome = await this.repository.rematch(
       this.repository.candidatesOf(tabs)
