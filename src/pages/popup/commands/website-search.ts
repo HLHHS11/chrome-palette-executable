@@ -1,6 +1,6 @@
 import type { Command } from "@core/command";
 
-import { matchCommand, parsedInput, setInput } from "~/util/signals";
+import { matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
 
@@ -37,6 +37,10 @@ const templates: Template[] = [
   },
 ];
 
+export const WEBSITE_SEARCH_KEYWORDS: readonly string[] = templates.map(
+  (template) => template.keyword
+);
+
 const base: Command[] = templates.map((template) => ({
   title: `Search ${template.title}`,
   icon: faviconURL(template.icon),
@@ -57,8 +61,5 @@ export default function websitesSuggestions(): Command[] {
         },
       ];
   }
-
-  const { isCommand } = parsedInput();
-  if (isCommand) return [];
   return base;
 }

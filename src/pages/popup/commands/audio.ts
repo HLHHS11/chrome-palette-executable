@@ -1,6 +1,6 @@
 import type { Command } from "@core/command";
 
-import { createLazyResource, parsedInput } from "~/util/signals";
+import { createLazyResource } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
 
@@ -26,7 +26,5 @@ const commands = createLazyResource(baseCommands, async () => {
 });
 
 export default function audibleTabSuggestions(): Command[] {
-  const { isCommand } = parsedInput();
-  if (isCommand) return [];
   return commands();
 }

@@ -2,9 +2,8 @@ import { createTabsRpcClient } from "@core/rpc";
 import type { routes } from "@pages/content/routes";
 import type { Command } from "@pages/core/command";
 
-import { inputSignal } from "~/util/signals";
+import { setInput } from "~/util/signals";
 
-const [, setInputValue] = inputSignal;
 const callContentRpc = createTabsRpcClient<typeof routes>();
 
 async function pickActiveTab(): Promise<chrome.tabs.Tab | undefined> {
@@ -85,7 +84,7 @@ async function runCopyMarkdownTabLink(): Promise<void> {
     window.close();
   } catch (err) {
     console.error(err);
-    setInputValue("エラーが発生しました。");
+    setInput("エラーが発生しました。");
   }
 }
 
@@ -111,7 +110,7 @@ async function runCopyPlainUrlTabLink(): Promise<void> {
     window.close();
   } catch (err) {
     console.error(err);
-    setInputValue("エラーが発生しました。");
+    setInput("エラーが発生しました。");
   }
 }
 
@@ -148,7 +147,7 @@ async function runCopyRichTextTabLink(): Promise<void> {
     window.close();
   } catch (err) {
     console.error(err);
-    setInputValue("エラーが発生しました。");
+    setInput("エラーが発生しました。");
   }
 }
 

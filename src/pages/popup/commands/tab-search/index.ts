@@ -1,11 +1,7 @@
 import type { Command, PaletteRow } from "@core/command";
 import { CrossRuntimeMessenger } from "@core/cross-runtime-message";
 
-import {
-  matchCommand,
-  requestInputSelectionRange,
-  setInput,
-} from "~/util/signals";
+import { requestInputSelectionRange, setInput } from "~/util/signals";
 
 import { faviconURL } from "../../Entry";
 import { hotkeyLaunchIntentMessage } from "./hotkey-launch-intent";
@@ -97,7 +93,5 @@ export class TabSearch {
  * 本来 Surface 抽象に格上げするべきで、その際は entryCommand すら不要になる。
  */
 export default function tabSearchSuggestions(): Command[] {
-  const { isMatch, isCommand } = matchCommand(TAB_SEARCH_KEYWORD);
-  if (isMatch) return [];
-  return isCommand ? [] : [entryCommand];
+  return [entryCommand];
 }

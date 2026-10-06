@@ -4,7 +4,7 @@ import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
 
-const KEYWORD = "e";
+export const EXTENSIONS_KEYWORD = "e";
 
 const commands = createLazyResource<Command[]>([], async (_setVal) => {
   return (await chrome.management.getAll()).map(
@@ -29,15 +29,13 @@ const base: Command[] = [
     title: "Search Extensions",
     icon: faviconURL("chrome://extensions/"),
     handler: async function () {
-      setInput(KEYWORD + ">");
+      setInput(EXTENSIONS_KEYWORD + ">");
     },
-    keyword: KEYWORD + ">",
+    keyword: EXTENSIONS_KEYWORD + ">",
   },
 ];
 
 export default function extensionSuggestions(): Command[] {
-  const { isMatch, isCommand } = matchCommand(KEYWORD);
-  if (isMatch) return commands();
-  if (isCommand) return [];
+  if (matchCommand(EXTENSIONS_KEYWORD).isMatch) return commands();
   return base;
 }

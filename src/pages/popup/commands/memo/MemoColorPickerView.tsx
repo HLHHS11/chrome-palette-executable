@@ -86,9 +86,7 @@ export default function MemoColorPickerView(props: {
     <div class="MemoColorPicker">
       <div class="memo_color_picker_header">
         <span>メモの色</span>
-        <span class="memo_color_picker_hint">
-          Enter で設定 / Esc で戻る
-        </span>
+        <span class="memo_color_picker_hint">Enter で設定 / Esc で戻る</span>
       </div>
       <div class="memo_color_picker_rows">
         <For each={[...MEMO_COLORS]}>

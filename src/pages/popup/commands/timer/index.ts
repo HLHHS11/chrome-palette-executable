@@ -4,7 +4,7 @@ import type { backgroundRoutes } from "@pages/background/routes";
 import { toDurationMs } from "@pages/timer";
 import type { DurationFields, TimerEntry } from "@pages/timer";
 
-import { createLazyResource, parsedInput, setInput } from "~/util/signals";
+import { createLazyResource, setInput } from "~/util/signals";
 
 import { faviconURL } from "../../util/favicon";
 import { openTimerForm, openTimerList } from "./view-intent";
@@ -134,8 +134,5 @@ function manageCommands(): Command[] {
 }
 
 export default function timerSuggestions(): Command[] {
-  // 別の機能のキーワードで絞り込んでいる最中は、その機能の行だけを見せる。
-  // タイマーはメモや他の機能と関わりを持たない。
-  if (parsedInput().isCommand) return [];
   return [...commands, ...stopCommands(), ...manageCommands()];
 }

@@ -2,7 +2,7 @@ import type { Command } from "@core/command";
 import { createRuntimeRpcClient } from "@core/rpc";
 import type { backgroundRoutes } from "@pages/background/routes";
 
-import { matchCommand, setInput } from "~/util/signals";
+import { setInput } from "~/util/signals";
 
 import { faviconURL } from "../../util/favicon";
 
@@ -58,7 +58,5 @@ const entryCommands: Command[] = [
 ];
 
 export default function tabRetentionSuggestions(): Command[] {
-  const { isCommand } = matchCommand(TAB_RETENTION_KEYWORD);
-  if (isCommand) return [];
   return entryCommands;
 }

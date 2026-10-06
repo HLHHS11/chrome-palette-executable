@@ -1,6 +1,6 @@
 import type { Command } from "@core/command";
 
-import { matchCommand, setInput } from "~/util/signals";
+import { setInput } from "~/util/signals";
 
 import { faviconURL } from "../../util/favicon";
 
@@ -32,7 +32,5 @@ const entryCommand: Command = {
 };
 
 export default function verticalTabsSuggestions(): Command[] {
-  const { isCommand } = matchCommand(VERTICAL_TABS_KEYWORD);
-  if (isCommand) return [];
   return [entryCommand];
 }

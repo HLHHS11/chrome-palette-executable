@@ -4,7 +4,7 @@ import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../Entry";
 
-const KEYWORD = "h";
+export const HISTORY_KEYWORD = "h";
 
 export function isDefined<T>(a: T | null): a is T {
   return Boolean(a);
@@ -54,14 +54,12 @@ const base: Command[] = [
     title: "Search History",
     icon: faviconURL("chrome://history/"),
     handler: async function () {
-      setInput(KEYWORD + ">");
+      setInput(HISTORY_KEYWORD + ">");
     },
-    keyword: KEYWORD + ">",
+    keyword: HISTORY_KEYWORD + ">",
   },
 ];
 export default function historySuggestions(): Command[] {
-  const { isMatch, isCommand } = matchCommand(KEYWORD);
-  if (isMatch) return commands();
-  if (isCommand) return [];
+  if (matchCommand(HISTORY_KEYWORD).isMatch) return commands();
   return base;
 }

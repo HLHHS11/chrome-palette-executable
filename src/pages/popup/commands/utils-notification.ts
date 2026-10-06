@@ -2,9 +2,8 @@ import type { Command } from "@core/command";
 import { createRuntimeRpcClient } from "@core/rpc";
 import { backgroundRoutes } from "@src/pages/background/routes";
 
-import { inputSignal } from "~/util/signals";
+import { setInput } from "~/util/signals";
 
-const [, setInputValue] = inputSignal;
 const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
 async function runSendHelloWorldNotification(): Promise<void> {
@@ -19,7 +18,7 @@ async function runSendHelloWorldNotification(): Promise<void> {
   });
 
   if (!res.ok) {
-    setInputValue(`エラーが発生しました。${res.error}`);
+    setInput(`エラーが発生しました。${res.error}`);
     console.error(res.error);
     setTimeout(() => window.close(), 3000);
     return;

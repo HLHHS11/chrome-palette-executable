@@ -11,7 +11,7 @@ import { faviconURL } from "../Entry";
 
 const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
-const KEYWORD = "t";
+export const TABS_KEYWORD = "t";
 
 type MemoInfo = { text: string; color: MemoColor };
 
@@ -80,9 +80,9 @@ const base: Command[] = [
   {
     title: "Search Tabs",
     handler: async function () {
-      setInput(KEYWORD + ">");
+      setInput(TABS_KEYWORD + ">");
     },
-    keyword: KEYWORD + ">",
+    keyword: TABS_KEYWORD + ">",
     icon: faviconURL("about:blank"),
   },
   {
@@ -99,8 +99,6 @@ const base: Command[] = [
 ];
 
 export default function switchTabSuggestions(): Command[] {
-  const { isMatch, isCommand } = matchCommand(KEYWORD);
-  if (isMatch) return commands();
-  if (isCommand) return [];
+  if (matchCommand(TABS_KEYWORD).isMatch) return commands();
   return base;
 }

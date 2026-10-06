@@ -2,7 +2,7 @@
 import type { Command } from "@pages/core/command";
 
 import { whenRankingServiceReady } from "~/util/ranking";
-import { inputSignal, parsedInput } from "~/util/signals";
+import { inputSignal } from "~/util/signals";
 
 import { isTruthy } from "../util/isTruthy";
 
@@ -462,7 +462,5 @@ const base: Command[] = [
 ];
 
 export default function generalSuggestions(): Command[] {
-  const { isCommand } = parsedInput();
-  if (isCommand) return [];
   return base;
 }

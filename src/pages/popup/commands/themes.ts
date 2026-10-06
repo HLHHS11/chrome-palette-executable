@@ -3,7 +3,7 @@ import { createEffect, createMemo, createSignal } from "solid-js";
 
 import { createStoredSignal, matchCommand, setInput } from "~/util/signals";
 
-const KEYWORD = "theme";
+export const THEME_KEYWORD = "theme";
 
 const THEMES = ["Set by OS", "Dark", "Light"] as const;
 type Theme = (typeof THEMES)[number];
@@ -45,15 +45,13 @@ const base: Command[] = [
   {
     title: "Chrome Palette Themes",
     handler: async function () {
-      setInput(KEYWORD + ">");
+      setInput(THEME_KEYWORD + ">");
     },
-    keyword: KEYWORD + ">",
+    keyword: THEME_KEYWORD + ">",
   },
 ];
 
 export default function themeSuggestions(): Command[] {
-  const { isMatch, isCommand } = matchCommand(KEYWORD);
-  if (isMatch) return commands();
-  if (isCommand) return [];
+  if (matchCommand(THEME_KEYWORD).isMatch) return commands();
   return base;
 }

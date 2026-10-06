@@ -211,8 +211,6 @@ function orphanEntryCommands(): Command[] {
 }
 
 export default function memoSuggestions(): Command[] {
-  const { isMatch, isCommand } = matchCommand(MEMO_ORPHAN_KEYWORD);
-  if (isMatch) return orphanCommands();
-  if (isCommand) return [];
+  if (matchCommand(MEMO_ORPHAN_KEYWORD).isMatch) return orphanCommands();
   return [...entryCommands, ...orphanEntryCommands()];
 }
