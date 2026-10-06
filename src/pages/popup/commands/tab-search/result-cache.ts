@@ -13,6 +13,7 @@ export type CachedHit = {
   path: string;
   favicon?: string;
   memo?: string;
+  memoColor?: string;
   lastAccessed?: number;
   score: number;
   highlights?: HighlightSpec;

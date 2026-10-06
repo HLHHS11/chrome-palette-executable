@@ -56,8 +56,8 @@ describe("MemoRepository", () => {
     assert.deepEqual(
       summaries.sort((a, b) => a.tabId - b.tabId),
       [
-        { tabId: 1, text: "買うもの" },
-        { tabId: 3, text: "あとで読む" },
+        { tabId: 1, text: "買うもの", color: "yellow" },
+        { tabId: 3, text: "あとで読む", color: "yellow" },
       ]
     );
   });

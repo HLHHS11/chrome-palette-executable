@@ -7,6 +7,7 @@ import {
   listMemos,
   listOrphanMemos,
   removeMemo,
+  setMemoColor,
   setMemoText,
   toggleMemoSize,
   updateMemoLayout,
@@ -82,6 +83,10 @@ export const backgroundRoutes = [
   {
     name: "memo.setText",
     handler: setMemoText,
+  },
+  {
+    name: "memo.setColor",
+    handler: setMemoColor,
   },
   {
     name: "memo.updateLayout",

@@ -33,6 +33,8 @@ import {
 import TimerFormView from "./commands/timer/TimerFormView";
 import TimerListView from "./commands/timer/TimerListView";
 import { EMPTY_DURATION_FIELDS, timerView } from "./commands/timer/view-intent";
+import MemoColorPickerView from "./commands/memo/MemoColorPickerView";
+import { memoColorPicker } from "./commands/memo/view-intent";
 import {
   VERTICAL_TABS_KEYWORD,
   type VerticalTabItem,
@@ -150,6 +152,7 @@ const timerFormFields = createMemo(() => {
 });
 
 const isTimerListOpen = createMemo(() => timerView()?.kind === "list");
+const memoColorPickerState = createMemo(() => memoColorPicker());
 
 const runCommand = async (command: Command, context: CommandRunContext) => {
   try {
@@ -266,6 +269,10 @@ const App = () => {
         <TimerListView />
       ) : timerFormFields() !== null ? (
         <TimerFormView initial={timerFormFields() ?? EMPTY_DURATION_FIELDS} />
+      ) : memoColorPickerState() !== null ? (
+        <MemoColorPickerView
+          initialColor={memoColorPickerState()?.initialColor ?? null}
+        />
       ) : isTabRetentionMode() ? (
         <TabRetentionView
           initialCategory={tabRetentionLaunchIntent()?.category ?? "closing"}

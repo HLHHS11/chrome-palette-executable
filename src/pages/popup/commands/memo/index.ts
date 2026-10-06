@@ -1,12 +1,14 @@
-import type { Command } from "@core/command";
+import type { Command, CommandRunContext } from "@core/command";
 import { createRuntimeRpcClient } from "@core/rpc";
 import type { backgroundRoutes } from "@pages/background/routes";
 import { timeAgo } from "@pages/lib/time-ago";
+import { parseMemoColor } from "@pages/memo";
 import type { Memo, OrphanMemo } from "@pages/memo";
 
 import { createLazyResource, matchCommand, setInput } from "~/util/signals";
 
 import { faviconURL } from "../../util/favicon";
+import { openMemoColorPicker } from "./view-intent";
 
 /** 宙に浮いたメモ (セッション復元でタブを決めきれなかったもの) の後始末。 */
 export const MEMO_ORPHAN_KEYWORD = "mo";
@@ -82,6 +84,21 @@ async function toggleSize(): Promise<void> {
   if (!response.ok) throw new Error(response.error);
 }
 
+async function setMemoColor(raw: string): Promise<void> {
+  const color = parseMemoColor(raw);
+  if (color === null) {
+    throw new Error(
+      "色名を入力してください。例: yellow, red, green, blue, purple"
+    );
+  }
+  const response = await callBackgroundRpc({
+    name: "memo.setColor",
+    tabId: await currentTabId(),
+    color,
+  });
+  if (!response.ok) throw new Error(response.error);
+}
+
 async function adoptOrphan(recordId: string): Promise<void> {
   const response = await callBackgroundRpc({
     name: "memo.adoptOrphan",
@@ -145,6 +162,24 @@ const entryCommands: Command[] = [
     subtitle: "メモを編集する",
     icon: faviconURL("about:blank"),
     handler: () => void run(editMemo),
+  },
+  {
+    title: "Memo: Set Color",
+    subtitle: "メモの色を設定する",
+    icon: faviconURL("about:blank"),
+    args: [{ name: "color", placeholder: "色名" }],
+    // Enter は色ピッカーへ、Cmd+Enter はその場で設定。名前だけで足りるときに
+    // 画面を挟まずに済ませられる。
+    handler: (context: CommandRunContext) => {
+      const raw = context.args.color ?? "";
+      if (context.intent === "primary") {
+        openMemoColorPicker(parseMemoColor(raw));
+        return;
+      }
+      void setMemoColor(raw)
+        .then(() => window.close())
+        .catch((e: unknown) => setInput(`エラーが発生しました。詳細: ${e}`));
+    },
   },
   {
     title: "Memo: Toggle Memo Size",

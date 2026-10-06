@@ -20,6 +20,7 @@ function makeTabRow(
     | "path"
     | "favicon"
     | "memo"
+    | "memoColor"
     | "lastAccessed"
   >,
   highlights: HighlightSpec | undefined,
@@ -34,6 +35,7 @@ function makeTabRow(
     subtitle: snap.host + snap.path,
     icon: snap.favicon,
     memo: snap.memo,
+    memoColor: snap.memoColor,
     // lastAccessed を相対時刻 (「◯分前」) 表示に流用する。Entry が lastVisitTime を twas で描画する。
     lastVisitTime: snap.lastAccessed,
     highlights,
@@ -108,6 +110,7 @@ export class TabSearchRunner {
       path: item.path,
       favicon: item.favicon,
       memo: item.memo,
+      memoColor: item.memoColor,
       lastAccessed: item.lastAccessed,
       score,
       highlights,

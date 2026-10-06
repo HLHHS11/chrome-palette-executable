@@ -1,5 +1,6 @@
 import type { Command } from "@core/command";
 import { createRuntimeRpcClient } from "@core/rpc";
+import type { MemoColor } from "@pages/memo";
 import { formatRemainingRough } from "@pages/timer";
 import { backgroundRoutes } from "@src/pages/background/routes";
 
@@ -12,13 +13,20 @@ const callRuntimeRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
 const KEYWORD = "t";
 
+type MemoInfo = { text: string; color: MemoColor };
+
 /** メモ取得に失敗してもタブ一覧は出したいので、空マップに落とす。 */
-async function loadMemosByTabId(): Promise<Map<number, string>> {
+async function loadMemosByTabId(): Promise<Map<number, MemoInfo>> {
   const response = await callRuntimeRpc({ name: "memo.list" }).catch(
     () => undefined
   );
   if (!response?.ok || !("data" in response)) return new Map();
-  return new Map(response.data.memos.map(({ tabId, text }) => [tabId, text]));
+  return new Map(
+    response.data.memos.map(({ tabId, text, color }) => [
+      tabId,
+      { text, color },
+    ])
+  );
 }
 
 /** 直近の期限だけを見せる。同じタブに複数あっても、次に鳴るものが分かれば足りる。 */
@@ -52,11 +60,13 @@ const commands = createLazyResource<Command[]>([], async () => {
       deadline === undefined
         ? ""
         : ` · ${formatRemainingRough(deadline - now)}にリマインド`;
+    const memo = id === undefined ? undefined : memosByTabId.get(id);
     return {
       title: title || "Untitled",
       subtitle: `${niceUrl(url)}${reminder}`,
       icon: faviconURL(url),
-      memo: id === undefined ? undefined : memosByTabId.get(id),
+      memo: memo?.text,
+      memoColor: memo?.color,
       handler: () => {
         chrome.tabs.update(id!, { highlighted: true });
         chrome.windows.update(windowId!, { focused: true });

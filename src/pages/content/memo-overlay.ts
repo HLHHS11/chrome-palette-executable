@@ -8,6 +8,8 @@ import {
   MEMO_DEFAULT_LAYOUT,
   MEMO_DEFAULT_RIGHT_MARGIN,
   MEMO_FONT_SCALE,
+  MEMO_OVERLAY_PALETTE,
+  normalizeMemoColor,
 } from "@pages/memo";
 import type { Memo, MemoDisplayState } from "@pages/memo";
 
@@ -205,8 +207,17 @@ function createOverlay(): OverlayHandle {
       return;
     }
     const { fontScale, state } = current.layout;
+    const palette = MEMO_OVERLAY_PALETTE[normalizeMemoColor(current.color)];
     panel.style.display = "flex";
     panel.dataset.state = state;
+    panel.style.background = palette.background;
+    panel.style.color = palette.text;
+    panel.style.borderColor = palette.border;
+    header.style.background = palette.headerBackground;
+    header.style.borderBottomColor = palette.headerBorder;
+    for (const button of actions.querySelectorAll("button")) {
+      button.style.color = palette.actionColor;
+    }
     // 高さは本文を測って決めるので、文字サイズと本文を先に当てておく。
     textarea.style.fontSize = `${fontScale}rem`;
     // 入力中に外部からの更新で値を差し戻すとカーソルが飛ぶので触らない。

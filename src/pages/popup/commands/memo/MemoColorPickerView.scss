@@ -1,0 +1,67 @@
+.MemoColorPicker {
+  display: flex;
+  flex-direction: column;
+  outline: none;
+  max-height: 600px;
+  color: var(--text-color);
+
+  .memo_color_picker_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--input-border-color);
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .memo_color_picker_hint {
+    opacity: 0.65;
+    font-size: 11px;
+  }
+
+  .memo_color_picker_rows {
+    overflow: auto;
+  }
+
+  .memo_color_row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 10px 12px;
+
+    &.selected {
+      background-color: var(--entry-selected-background-color);
+      color: var(--entry-selected-text-color);
+    }
+  }
+
+  .memo_color_swatch {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    border: 1px solid var(--memo-border-color);
+    border-radius: 4px;
+    background: var(--memo-background-color);
+    width: 28px;
+    height: 18px;
+  }
+
+  .memo_color_label {
+    flex: 0 0 auto;
+    font-size: 13px;
+  }
+
+  .memo_color_name {
+    opacity: 0.65;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
+  }
+
+  .memo_color_picker_error {
+    border-top: 1px solid var(--input-border-color);
+    padding: 10px 12px;
+    color: #b00020;
+    font-size: 12px;
+  }
+}

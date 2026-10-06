@@ -23,6 +23,8 @@ export type TabSnapshot = {
    * 本文よりも強い手がかりとして扱う (tab-content-searcher の W_MEMO)。
    */
   memo?: string;
+  /** メモがあるときの色。表示専用で、検索スコアには使わない。 */
+  memoColor?: string;
   /**
    * タブが最後にアクティブだった時刻 (ms epoch)。相対時刻表示と、
    * 重複タブを新しい順に並べるためのキー。取得できない場合は undefined。

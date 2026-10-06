@@ -140,14 +140,24 @@ export default function TabRetentionView(props: {
     return response.data.overview;
   });
 
-  /** tabId -> メモ本文。一覧・検索・削除確認で共用する。 */
+  /** tabId -> メモ本文と色。一覧・検索・削除確認で共用する。 */
   const [memos] = createResource(async () => {
     const response = await callBackgroundRpc({ name: "memo.list" });
-    if (!response.ok || !("data" in response)) return new Map<number, string>();
-    return new Map(response.data.memos.map(({ tabId, text }) => [tabId, text]));
+    if (!response.ok || !("data" in response)) {
+      return new Map<number, { text: string; color: string }>();
+    }
+    return new Map(
+      response.data.memos.map(({ tabId, text, color }) => [
+        tabId,
+        { text, color },
+      ])
+    );
   });
 
-  const memoOf = (tabId: number): string | undefined => memos()?.get(tabId);
+  const memoOf = (tabId: number): string | undefined =>
+    memos()?.get(tabId)?.text;
+  const memoColorOf = (tabId: number): string =>
+    memos()?.get(tabId)?.color ?? "yellow";
 
   /** tabId -> 直近の期限。同じタブに複数あれば、いちばん近いものを見せる。 */
   const [reminders] = createResource(async () => {
@@ -543,10 +553,27 @@ export default function TabRetentionView(props: {
                     >
                       {(text) => <div class="retention_reminder">{text()}</div>}
                     </Show>
-                    <Show when={row.kind === "tab" && memoOf(row.item.tabId)}>
-                      {(text) => (
-                        <div class="retention_memo" title={text()}>
-                          {text()}
+                    <Show
+                      when={
+                        row.kind === "tab"
+                          ? (() => {
+                              const text = memoOf(row.item.tabId);
+                              if (!text) return undefined;
+                              return {
+                                text,
+                                color: memoColorOf(row.item.tabId),
+                              };
+                            })()
+                          : undefined
+                      }
+                    >
+                      {(memo) => (
+                        <div
+                          class="retention_memo"
+                          title={memo().text}
+                          data-memo-color={memo().color}
+                        >
+                          {memo().text}
                         </div>
                       )}
                     </Show>

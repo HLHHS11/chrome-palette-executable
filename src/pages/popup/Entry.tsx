@@ -142,7 +142,11 @@ export default function Entry(props: {
         </Show>
         <Show when={props.command.memo}>
           {(memo) => (
-            <div class="memo" title={memo()}>
+            <div
+              class="memo"
+              title={memo()}
+              data-memo-color={props.command.memoColor ?? "yellow"}
+            >
               {renderWithHighlights(memo(), props.command.highlights?.memo)}
             </div>
           )}

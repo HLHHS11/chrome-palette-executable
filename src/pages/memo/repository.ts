@@ -6,6 +6,7 @@ import type {
   TabBoundStorage,
 } from "@core/tab-bound-store";
 
+import { MEMO_DEFAULT_COLOR, normalizeMemoColor } from "./colors";
 import { MEMO_DEFAULT_LAYOUT } from "./types";
 import type { Memo, MemoLayout, MemoSummary, OrphanMemo } from "./types";
 
@@ -34,7 +35,11 @@ function sanitizeLayout(layout: MemoLayout): MemoLayout {
 }
 
 function sanitizeMemo(memo: Memo): Memo {
-  return { ...memo, layout: sanitizeLayout(memo.layout) };
+  return {
+    ...memo,
+    layout: sanitizeLayout(memo.layout),
+    color: normalizeMemoColor(memo.color),
+  };
 }
 
 /**
@@ -64,7 +69,11 @@ export class MemoRepository {
 
   /** 既定レイアウトの空メモ。まだメモが無いタブに書き込むときの土台。 */
   emptyMemo(): Memo {
-    return { text: "", layout: { ...MEMO_DEFAULT_LAYOUT } };
+    return {
+      text: "",
+      layout: { ...MEMO_DEFAULT_LAYOUT },
+      color: MEMO_DEFAULT_COLOR,
+    };
   }
 
   async save(tabId: number, memo: Memo): Promise<void> {
@@ -97,7 +106,11 @@ export class MemoRepository {
     const summaries: MemoSummary[] = [];
     for (const [tabId, record] of attached) {
       if (record.value.text.length === 0) continue;
-      summaries.push({ tabId, text: record.value.text });
+      summaries.push({
+        tabId,
+        text: record.value.text,
+        color: normalizeMemoColor(record.value.color),
+      });
     }
     return summaries;
   }

@@ -1,6 +1,7 @@
 import { createRuntimeRpcClient, createTabsRpcClient } from "@core/rpc";
 import type { backgroundRoutes } from "@pages/background/routes";
 import { routes as contentRoutes } from "@pages/content/routes";
+import type { MemoColor } from "@pages/memo";
 
 import { faviconURL } from "../../Entry";
 import type { TabSnapshot } from "./types";
@@ -8,13 +9,20 @@ import type { TabSnapshot } from "./types";
 const callContentRpc = createTabsRpcClient<typeof contentRoutes>();
 const callBackgroundRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
+type MemoInfo = { text: string; color: MemoColor };
+
 /** メモ取得に失敗しても本文検索は続けたいので、空マップに落とす。 */
-async function loadMemosByTabId(): Promise<Map<number, string>> {
+async function loadMemosByTabId(): Promise<Map<number, MemoInfo>> {
   const response = await callBackgroundRpc({ name: "memo.list" }).catch(
     () => undefined
   );
   if (!response?.ok || !("data" in response)) return new Map();
-  return new Map(response.data.memos.map(({ tabId, text }) => [tabId, text]));
+  return new Map(
+    response.data.memos.map(({ tabId, text, color }) => [
+      tabId,
+      { text, color },
+    ])
+  );
 }
 
 /**
@@ -56,6 +64,7 @@ export async function collectTabSnapshots(): Promise<TabSnapshot[]> {
           ? rpcResult.data.text
           : "";
       const reachable = rpcResult !== null;
+      const memo = memosByTabId.get(tab.id);
 
       return {
         tabId: tab.id,
@@ -67,7 +76,8 @@ export async function collectTabSnapshots(): Promise<TabSnapshot[]> {
         text,
         reachable,
         favicon: faviconURL(url),
-        memo: memosByTabId.get(tab.id),
+        memo: memo?.text,
+        memoColor: memo?.color,
         lastAccessed: tab.lastAccessed,
       };
     })

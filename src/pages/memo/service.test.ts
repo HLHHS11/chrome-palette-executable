@@ -67,3 +67,38 @@ describe("MemoService: 宙に浮いたメモの後始末", () => {
     assert.equal(saveRecords.mock.calls.length, 0);
   });
 });
+
+describe("MemoService: 色", () => {
+  it("メモが無いタブでも色を付けると空メモができる", async () => {
+    stubTabs("https://example.com/");
+    const { service } = createService();
+
+    const memo = await service.setColor(1, "red");
+
+    assert.equal(memo.text, "");
+    assert.equal(memo.color, "red");
+    assert.equal((await service.get(1))?.color, "red");
+  });
+
+  it("本文のあるメモの色だけを変えられる", async () => {
+    stubTabs("https://example.com/");
+    const { service } = createService();
+    await service.setText(1, "作業中");
+
+    const memo = await service.setColor(1, "blue");
+
+    assert.equal(memo.text, "作業中");
+    assert.equal(memo.color, "blue");
+  });
+
+  it("一覧の要約に色が載る", async () => {
+    stubTabs("https://example.com/");
+    const { service } = createService();
+    await service.setText(1, "作業中");
+    await service.setColor(1, "purple");
+
+    assert.deepEqual(await service.listSummaries(), [
+      { tabId: 1, text: "作業中", color: "purple" },
+    ]);
+  });
+});

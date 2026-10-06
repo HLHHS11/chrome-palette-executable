@@ -102,7 +102,11 @@ export default function VerticalTabsView(props: {
                 </div>
                 <Show when={item.memo}>
                   {(memo) => (
-                    <div class="vertical_tab_memo" title={memo()}>
+                    <div
+                      class="vertical_tab_memo"
+                      title={memo()}
+                      data-memo-color={item.memoColor ?? "yellow"}
+                    >
                       {memo()}
                     </div>
                   )}

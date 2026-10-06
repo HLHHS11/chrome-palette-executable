@@ -6,9 +6,24 @@ body[theme="Light"] {
   --entry-selected-border-color: #d6d6d6;
   --entry-selected-text-color: #222;
   --input-border-color: #adadad;
-  --memo-background-color: #ffe9a3;
-  --memo-border-color: #e5c763;
-  --memo-text-color: #3d2f00;
+  --memo-yellow-background-color: #ffe9a3;
+  --memo-yellow-border-color: #e5c763;
+  --memo-yellow-text-color: #3d2f00;
+  --memo-red-background-color: #ffd6d4;
+  --memo-red-border-color: #e8a39e;
+  --memo-red-text-color: #4a2020;
+  --memo-green-background-color: #d4f0d8;
+  --memo-green-border-color: #8fc99a;
+  --memo-green-text-color: #1e3d24;
+  --memo-blue-background-color: #d4e6ff;
+  --memo-blue-border-color: #8fb8e8;
+  --memo-blue-text-color: #1e304a;
+  --memo-purple-background-color: #ead4f5;
+  --memo-purple-border-color: #c08fe0;
+  --memo-purple-text-color: #3d1e4a;
+  --memo-background-color: var(--memo-yellow-background-color);
+  --memo-border-color: var(--memo-yellow-border-color);
+  --memo-text-color: var(--memo-yellow-text-color);
   --shortcut-background-color: #cde6ff;
   --shortcut-border-color: #9bb7e2;
   --shortcut-text-color: #455670;
@@ -44,9 +59,24 @@ body[theme="Dark"] {
   --entry-selected-border-color: #6f6f6f;
   --entry-selected-text-color: #ffffff;
   --input-border-color: #adadad;
-  --memo-background-color: #6d5619;
-  --memo-border-color: #8f7325;
-  --memo-text-color: #ffeaa0;
+  --memo-yellow-background-color: #6d5619;
+  --memo-yellow-border-color: #8f7325;
+  --memo-yellow-text-color: #ffeaa0;
+  --memo-red-background-color: #6d2924;
+  --memo-red-border-color: #8f3a34;
+  --memo-red-text-color: #ffc8c4;
+  --memo-green-background-color: #295a32;
+  --memo-green-border-color: #387544;
+  --memo-green-text-color: #c4f0cc;
+  --memo-blue-background-color: #24466d;
+  --memo-blue-border-color: #345c8f;
+  --memo-blue-text-color: #c4dcff;
+  --memo-purple-background-color: #4a2a6d;
+  --memo-purple-border-color: #63388f;
+  --memo-purple-text-color: #e8c4ff;
+  --memo-background-color: var(--memo-yellow-background-color);
+  --memo-border-color: var(--memo-yellow-border-color);
+  --memo-text-color: var(--memo-yellow-text-color);
   --shortcut-background-color: #4b72ae;
   --shortcut-border-color: #6892d3;
   --shortcut-text-color: #eee;
@@ -72,6 +102,32 @@ body[theme="Dark"] {
   --duplicate-highlight-8-active: #854039;
   --duplicate-highlight-9: #4e4e4e;
   --duplicate-highlight-9-active: #626262;
+}
+
+[data-memo-color="yellow"] {
+  --memo-background-color: var(--memo-yellow-background-color);
+  --memo-border-color: var(--memo-yellow-border-color);
+  --memo-text-color: var(--memo-yellow-text-color);
+}
+[data-memo-color="red"] {
+  --memo-background-color: var(--memo-red-background-color);
+  --memo-border-color: var(--memo-red-border-color);
+  --memo-text-color: var(--memo-red-text-color);
+}
+[data-memo-color="green"] {
+  --memo-background-color: var(--memo-green-background-color);
+  --memo-border-color: var(--memo-green-border-color);
+  --memo-text-color: var(--memo-green-text-color);
+}
+[data-memo-color="blue"] {
+  --memo-background-color: var(--memo-blue-background-color);
+  --memo-border-color: var(--memo-blue-border-color);
+  --memo-text-color: var(--memo-blue-text-color);
+}
+[data-memo-color="purple"] {
+  --memo-background-color: var(--memo-purple-background-color);
+  --memo-border-color: var(--memo-purple-border-color);
+  --memo-text-color: var(--memo-purple-text-color);
 }
 .list::-webkit-scrollbar {
   width: 8px;

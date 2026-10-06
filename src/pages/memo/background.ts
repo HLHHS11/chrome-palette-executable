@@ -6,6 +6,8 @@ import type {
 } from "@core/rpc";
 
 import { routes as contentRoutes } from "../content/routes";
+import { isMemoColor } from "./colors";
+import type { MemoColor } from "./colors";
 import { MemoService } from "./service";
 import type { Memo, MemoLayout, MemoSummary, OrphanMemo } from "./types";
 
@@ -93,6 +95,20 @@ export async function setMemoText(
   // そのタブ自身の入力が発生源なら再描画しない。入力中に値を差し戻すと
   // カーソル位置が飛んでしまうため。
   if (!isFromOwnTab(tabId, context)) refreshOverlay(tabId);
+  return { ok: true, data: { memo } };
+}
+
+export async function setMemoColor(
+  params: { tabId?: number; color: MemoColor },
+  context: RpcHandlerContext
+): Promise<RpcResponse<{ memo: Memo }>> {
+  const tabId = resolveTabId(params.tabId, context);
+  if (tabId === null) return { ok: false, error: "Invalid tabId." };
+  if (!isMemoColor(params.color)) {
+    return { ok: false, error: "Invalid color." };
+  }
+  const memo = await service.setColor(tabId, params.color);
+  refreshOverlay(tabId);
   return { ok: true, data: { memo } };
 }
 

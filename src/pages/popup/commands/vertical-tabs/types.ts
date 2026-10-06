@@ -1,4 +1,5 @@
 import type { DuplicateHighlightColor } from "@core/command";
+import type { MemoColor } from "@pages/memo";
 
 export type VerticalTabItem = {
   tabId: number;
@@ -12,4 +13,6 @@ export type VerticalTabItem = {
   lastAccessed?: number;
   /** そのタブに貼り付けられたメモ本文。未設定なら undefined。 */
   memo?: string;
+  /** メモがあるときの色。memo が無いときは無視する。 */
+  memoColor?: MemoColor;
 };

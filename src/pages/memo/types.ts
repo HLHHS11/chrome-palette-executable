@@ -1,3 +1,5 @@
+import type { MemoColor } from "./colors";
+
 /**
  * メモの表示状態。
  *
@@ -34,6 +36,11 @@ export interface MemoLayout {
 export interface Memo {
   text: string;
   layout: MemoLayout;
+  /**
+   * 付箋と一覧ハイライトの色。省略時は黄色。
+   * 色フィールドが無かった頃の保存データにも無いので、読む側で既定色に落とす。
+   */
+  color?: MemoColor;
 }
 
 /**
@@ -66,6 +73,7 @@ export const MEMO_FONT_SCALE = {
 export interface MemoSummary {
   tabId: number;
   text: string;
+  color: MemoColor;
 }
 
 /** どのタブにも結びついていないメモ。セッション復元で行き場を失ったもの。 */

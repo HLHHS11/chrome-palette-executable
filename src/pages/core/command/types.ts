@@ -64,6 +64,11 @@ type CommandBase = {
    */
   memo?: string;
   /**
+   * メモ表示の色名 (`yellow` / `red` / `green` / `blue` / `purple`)。
+   * `memo` があるときだけ意味を持つ。省略時は黄色扱い。
+   */
+  memoColor?: string;
+  /**
    * 同一ページ (完全一致 URL) が複数開かれている行に付ける識別色。
    * 同じ色 = 同じページが別タブでも開かれている、というマーク。
    * 重複していない行では undefined。

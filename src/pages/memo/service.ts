@@ -1,3 +1,4 @@
+import type { MemoColor } from "./colors";
 import { MemoRepository } from "./repository";
 import { MEMO_FONT_SCALE } from "./types";
 import type {
@@ -31,6 +32,17 @@ export class MemoService {
   async setText(tabId: number, text: string): Promise<Memo> {
     const current = await this.repository.findByTabId(tabId);
     const memo: Memo = { ...(current ?? this.repository.emptyMemo()), text };
+    await this.repository.save(tabId, memo);
+    return memo;
+  }
+
+  /**
+   * 色を付ける。まだメモが無いタブなら空のまま作る。
+   * 色分けの入口を本文編集より先に使えるようにするため。
+   */
+  async setColor(tabId: number, color: MemoColor): Promise<Memo> {
+    const current = await this.repository.findByTabId(tabId);
+    const memo: Memo = { ...(current ?? this.repository.emptyMemo()), color };
     await this.repository.save(tabId, memo);
     return memo;
   }
