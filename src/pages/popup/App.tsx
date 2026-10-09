@@ -107,10 +107,12 @@ const isVerticalTabsMode = createMemo(
     isEphemeralVerticalTabsActive ||
     parsedInput().keyword === VERTICAL_TABS_KEYWORD
 );
-const [verticalTabs] = createResource(isVerticalTabsMode, (isActive) =>
-  isActive
-    ? collectVerticalTabs({ windowId: verticalTabsWindowId })
-    : Promise.resolve([])
+const [verticalTabs, { refetch: refetchVerticalTabs }] = createResource(
+  isVerticalTabsMode,
+  (isActive) =>
+    isActive
+      ? collectVerticalTabs({ windowId: verticalTabsWindowId })
+      : Promise.resolve([])
 );
 const [tabRetentionLaunchIntent] = createResource(() =>
   new CrossRuntimeMessenger().take(tabRetentionLaunchIntentMessage)
@@ -258,12 +260,18 @@ const App = () => {
     window.close();
   };
 
+  const closeVerticalTab = async (item: VerticalTabItem) => {
+    await chrome.tabs.remove(item.tabId);
+    await refetchVerticalTabs();
+  };
+
   return (
     <>
       {isVerticalTabsMode() ? (
         <VerticalTabsView
           items={() => verticalTabs() ?? []}
           onSelect={selectVerticalTab}
+          onClose={closeVerticalTab}
         />
       ) : isTimerListOpen() ? (
         <TimerListView />
