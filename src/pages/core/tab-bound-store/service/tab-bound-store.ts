@@ -236,6 +236,32 @@ export class TabBoundStore<T> {
     });
   }
 
+  /**
+   * 孤児レコードをまとめてタブに結びつける。結びつけた tabId を返す。
+   *
+   * 既に結びついているレコードと、既に別のレコードを持っているタブは飛ばす。
+   * 組み合わせを決めてから呼ばれるまでの間に状態が変わっていても、
+   * 結びつきを奪い合わないようにするため。
+   */
+  async adoptOrphans(
+    pairs: ReadonlyMap<TabBoundRecordId, number>
+  ): Promise<number[]> {
+    return this.transact(({ records, assignments }) => {
+      const known = new Set(records.map((r) => r.id));
+      const attached = new Set(assignments.values());
+      const adopted: number[] = [];
+      for (const [recordId, tabId] of pairs) {
+        if (!known.has(recordId) || attached.has(recordId)) continue;
+        if (assignments.has(tabId)) continue;
+        assignments.set(tabId, recordId);
+        attached.add(recordId);
+        adopted.push(tabId);
+      }
+      if (adopted.length > 0) this.persist(records, assignments);
+      return adopted;
+    });
+  }
+
   async forgetOrphan(recordId: TabBoundRecordId): Promise<boolean> {
     return this.transact(({ records, assignments }) => {
       const next = records.filter((r) => r.id !== recordId);

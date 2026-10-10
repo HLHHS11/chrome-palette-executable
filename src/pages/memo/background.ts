@@ -197,6 +197,20 @@ export async function adoptOrphanMemo(
   return { ok: true, data: {} };
 }
 
+export async function countBulkRestorableMemos(): Promise<
+  RpcResponse<{ count: number }>
+> {
+  return { ok: true, data: { count: await service.countBulkRestorable() } };
+}
+
+export async function restoreMemosInBulk(): Promise<
+  RpcResponse<{ restored: number }>
+> {
+  const tabIds = await service.restoreBulk();
+  for (const tabId of tabIds) refreshOverlay(tabId);
+  return { ok: true, data: { restored: tabIds.length } };
+}
+
 export async function forgetOrphanMemo(params: {
   recordId: string;
 }): Promise<RpcResponse<RpcVoidResponseBody>> {

@@ -1,12 +1,14 @@
 import type { RpcRoute } from "@core/rpc";
 import {
   adoptOrphanMemo,
+  countBulkRestorableMemos,
   editMemo,
   forgetOrphanMemo,
   getMemo,
   listMemos,
   listOrphanMemos,
   removeMemo,
+  restoreMemosInBulk,
   setMemoColor,
   setMemoText,
   toggleMemoSize,
@@ -119,6 +121,14 @@ export const backgroundRoutes = [
   {
     name: "memo.forgetOrphan",
     handler: forgetOrphanMemo,
+  },
+  {
+    name: "memo.countBulkRestorable",
+    handler: countBulkRestorableMemos,
+  },
+  {
+    name: "memo.restoreBulk",
+    handler: restoreMemosInBulk,
   },
   {
     name: "timer.start",

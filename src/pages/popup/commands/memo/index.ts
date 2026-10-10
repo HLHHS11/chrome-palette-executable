@@ -13,6 +13,9 @@ import { openMemoColorPicker } from "./view-intent";
 /** 宙に浮いたメモ (セッション復元でタブを決めきれなかったもの) の後始末。 */
 export const MEMO_ORPHAN_KEYWORD = "mo";
 
+/** 直近にまとめて閉じたメモを、開いているタブへ一括で戻す。 */
+export const MEMO_RESTORE_BULK_KEYWORD = "ma";
+
 const callBackgroundRpc = createRuntimeRpcClient<typeof backgroundRoutes>();
 
 async function currentTabId(): Promise<number> {
@@ -36,6 +39,22 @@ const orphans = createLazyResource<OrphanMemo[]>([], async () => {
   if (!response.ok || !("data" in response)) return [];
   return response.data.orphans;
 });
+
+/**
+ * 一括復元で戻せる件数。モードに入ってから初めて問い合わせる。
+ * パレットを開くたびに数えると、使わないときにも読み出しが走るため。
+ * 数え終わるまでは null。
+ */
+const bulkRestorableCount = createLazyResource<number | null>(
+  null,
+  async () => {
+    const response = await callBackgroundRpc({
+      name: "memo.countBulkRestorable",
+    });
+    if (!response.ok || !("data" in response)) return 0;
+    return response.data.count;
+  }
+);
 
 /** 復元先のタブが今持っているメモ。押し出しの有無を伝えるために読む。 */
 const currentMemo = createLazyResource<Memo | null>(null, async () => {
@@ -108,6 +127,11 @@ async function adoptOrphan(recordId: string): Promise<void> {
   if (!response.ok) throw new Error(response.error);
 }
 
+async function restoreBulk(): Promise<void> {
+  const response = await callBackgroundRpc({ name: "memo.restoreBulk" });
+  if (!response.ok) throw new Error(response.error);
+}
+
 async function forgetOrphan(recordId: string): Promise<void> {
   const response = await callBackgroundRpc({
     name: "memo.forgetOrphan",
@@ -156,6 +180,28 @@ function orphanCommands(): Command[] {
   });
 }
 
+function bulkRestoreCommands(): Command[] {
+  const count = bulkRestorableCount();
+  if (count === null) return [];
+  if (count === 0) {
+    return [
+      {
+        title: "復元できるメモはありません",
+        subtitle: "直近にまとめて閉じたメモと同じ URL のタブが開いていません",
+        icon: faviconURL("about:blank"),
+      },
+    ];
+  }
+  return [
+    {
+      title: `${count}件のメモを復元する`,
+      subtitle: "直近にまとめて閉じたメモを、同じ URL のタブへ戻す",
+      icon: faviconURL("about:blank"),
+      handler: () => void run(restoreBulk),
+    },
+  ];
+}
+
 const entryCommands: Command[] = [
   {
     title: "Memo: Edit Memo",
@@ -188,6 +234,13 @@ const entryCommands: Command[] = [
     handler: () => void run(toggleSize),
   },
   {
+    title: "Memo: Restore All Memos",
+    subtitle: "閉じたメモをまとめて復元する",
+    keyword: `${MEMO_RESTORE_BULK_KEYWORD}>`,
+    icon: faviconURL("about:blank"),
+    handler: () => setInput(`${MEMO_RESTORE_BULK_KEYWORD}>`),
+  },
+  {
     title: "Memo: Remove Memo",
     subtitle: "メモを削除する",
     icon: faviconURL("about:blank"),
@@ -212,5 +265,8 @@ function orphanEntryCommands(): Command[] {
 
 export default function memoSuggestions(): Command[] {
   if (matchCommand(MEMO_ORPHAN_KEYWORD).isMatch) return orphanCommands();
+  if (matchCommand(MEMO_RESTORE_BULK_KEYWORD).isMatch) {
+    return bulkRestoreCommands();
+  }
   return [...entryCommands, ...orphanEntryCommands()];
 }

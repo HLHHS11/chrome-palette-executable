@@ -138,6 +138,21 @@ export class MemoService {
     return this.repository.deleteOrphan(recordId);
   }
 
+  /** 一括復元で戻せるメモの件数。実行前にユーザーへ見せるためのもの。 */
+  async countBulkRestorable(): Promise<number> {
+    const tabs = await chrome.tabs.query({});
+    return (await this.repository.bulkRestorePlanFor(tabs)).size;
+  }
+
+  /**
+   * 直近にまとめて閉じたメモを、開いているタブへまとめて結び直す。
+   * タブを全部閉じて開き直したときの復旧手段。結びつけた tabId を返す。
+   */
+  async restoreBulk(): Promise<number[]> {
+    const tabs = await chrome.tabs.query({});
+    return this.repository.restoreBulk(tabs);
+  }
+
   /**
    * セッション復元後にメモを開いているタブへ結び直す。
    * 決めきれなかったものは宙に浮いたまま残し、ユーザーに選ばせる。

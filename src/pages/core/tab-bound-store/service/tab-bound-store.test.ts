@@ -119,6 +119,21 @@ describe("TabBoundStore", () => {
     assert.equal(await store.get(43), undefined);
   });
 
+  it("adopts orphans in bulk, skipping tabs that already have a record", async () => {
+    const { store } = createStore<string>();
+    await store.set(1, "戻すメモ", binding());
+    await store.detach(1);
+    await store.set(3, "既にあるメモ", binding());
+    const [orphan] = await store.orphans();
+
+    const adopted = await store.adoptOrphans(new Map([[orphan.id, 3]]));
+    assert.deepEqual(adopted, []);
+    assert.equal(await store.get(3), "既にあるメモ");
+
+    assert.deepEqual(await store.adoptOrphans(new Map([[orphan.id, 4]])), [4]);
+    assert.equal(await store.get(4), "戻すメモ");
+  });
+
   it("forgets an orphan on request", async () => {
     const { store } = createStore<string>();
     await store.set(1, "メモ", binding());

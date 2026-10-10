@@ -12,7 +12,10 @@ import extenionsSuggestions, {
 import generalSuggestions from "./popup/commands/general";
 import gmailSuggestions from "./popup/commands/gmail";
 import historySuggestions, { HISTORY_KEYWORD } from "./popup/commands/history";
-import memoSuggestions, { MEMO_ORPHAN_KEYWORD } from "./popup/commands/memo";
+import memoSuggestions, {
+  MEMO_ORPHAN_KEYWORD,
+  MEMO_RESTORE_BULK_KEYWORD,
+} from "./popup/commands/memo";
 import tabRetentionSuggestions from "./popup/commands/tab-retention";
 import tabSearchSuggestions from "./popup/commands/tab-search";
 import switchTabSuggestions, { TABS_KEYWORD } from "./popup/commands/tabs";
@@ -51,7 +54,10 @@ const suggestionSources: SuggestionSource[] = [
   { suggest: () => verticalTabsSuggestions() },
   { suggest: () => tabSearchSuggestions() },
   { suggest: () => tabRetentionSuggestions() },
-  { keywords: [MEMO_ORPHAN_KEYWORD], suggest: () => memoSuggestions() },
+  {
+    keywords: [MEMO_ORPHAN_KEYWORD, MEMO_RESTORE_BULK_KEYWORD],
+    suggest: () => memoSuggestions(),
+  },
   { suggest: () => timerSuggestions() },
   { keywords: [HISTORY_KEYWORD], suggest: () => historySuggestions() },
   { keywords: [BOOKMARKS_KEYWORD], suggest: () => bookmarkSuggestions() },

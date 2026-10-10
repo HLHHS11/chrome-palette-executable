@@ -3,9 +3,11 @@ import type {
   RematchCandidate,
   RematchOutcome,
   TabBinding,
+  TabBoundRecordId,
   TabBoundStorage,
 } from "@core/tab-bound-store";
 
+import { planBulkRestore } from "./bulk-restore";
 import { MEMO_DEFAULT_COLOR, normalizeMemoColor } from "./colors";
 import { MEMO_DEFAULT_LAYOUT } from "./types";
 import type { Memo, MemoLayout, MemoSummary, OrphanMemo } from "./types";
@@ -148,6 +150,25 @@ export class MemoRepository {
 
   async deleteOrphan(recordId: string): Promise<boolean> {
     return this.store.forgetOrphan(recordId);
+  }
+
+  /** 一括復元で結びつけられる組み合わせ。結びつけはしない。 */
+  async bulkRestorePlanFor(
+    tabs: readonly chrome.tabs.Tab[]
+  ): Promise<Map<TabBoundRecordId, number>> {
+    const [orphans, attached] = await Promise.all([
+      this.store.orphans(),
+      this.store.attachedRecords(),
+    ]);
+    const freeTabs = this.candidatesOf(tabs).filter(
+      (candidate) => !attached.has(candidate.tabId)
+    );
+    return planBulkRestore(orphans, freeTabs);
+  }
+
+  /** 直近にまとめて閉じたメモを、開いているタブへ結び直す。結びつけた tabId を返す。 */
+  async restoreBulk(tabs: readonly chrome.tabs.Tab[]): Promise<number[]> {
+    return this.store.adoptOrphans(await this.bulkRestorePlanFor(tabs));
   }
 
   async rematch(
