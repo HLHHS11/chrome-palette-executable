@@ -60,11 +60,11 @@ describe("MemoService: 宙に浮いたメモの後始末", () => {
     const { service, storage } = createService();
     await service.setText(1, "引き継ぎたいメモ");
     await service.detach(1);
-    const saveRecords = vi.spyOn(storage, "saveRecords");
+    const write = vi.spyOn(storage, "write");
 
     await service.listOrphansFor(1);
 
-    assert.equal(saveRecords.mock.calls.length, 0);
+    assert.equal(write.mock.calls.length, 0);
   });
 });
 

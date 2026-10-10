@@ -86,6 +86,19 @@ describe("TabBoundStore", () => {
     assert.equal(orphans[0].value, "閉じても残したいメモ");
   });
 
+  it("detaches every tab even when the closes arrive at once", async () => {
+    // ウィンドウを閉じると、各タブの onRemoved が待たずに立て続けに届く。
+    const { store, storage } = createStore<string>();
+    for (const tabId of [1, 2, 3, 4, 5]) {
+      await store.set(tabId, `メモ${tabId}`, binding({ index: tabId }));
+    }
+
+    await Promise.all([1, 2, 3, 4, 5].map((tabId) => store.detach(tabId)));
+
+    assert.equal(storage.snapshot().assignments.size, 0);
+    assert.equal((await store.orphans()).length, 5);
+  });
+
   it("adopts an orphan onto a new tab", async () => {
     const { store } = createStore<string>();
     await store.set(1, "メモ", binding());
@@ -326,7 +339,7 @@ describe("TabBoundStore: 孤児の保持期限", () => {
     const removed = await store.pruneExpiredOrphans();
 
     assert.equal(removed, 1);
-    assert.deepEqual(await storage.loadRecords(), []);
+    assert.deepEqual(storage.snapshot().records, []);
   });
 
   it("結びついているレコードは掃除で消さない", async () => {
@@ -336,6 +349,6 @@ describe("TabBoundStore: 孤児の保持期限", () => {
     advance(365 * 24 * HOUR);
     await store.pruneExpiredOrphans();
 
-    assert.equal((await storage.loadRecords()).length, 1);
+    assert.equal(storage.snapshot().records.length, 1);
   });
 });

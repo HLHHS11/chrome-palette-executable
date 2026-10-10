@@ -1,5 +1,11 @@
 import type { TabBoundRecord, TabBoundRecordId } from "../domain/types";
 
+/** 保存内容の全体。records と assignments は常に揃えて読み書きする。 */
+export interface TabBoundState<T> {
+  records: TabBoundRecord<T>[];
+  assignments: Map<number, TabBoundRecordId>;
+}
+
 /**
  * タブ紐づけ値の入出力を抽象化するゲートウェイ。
  *
@@ -13,14 +19,14 @@ import type { TabBoundRecord, TabBoundRecordId } from "../domain/types";
  * - records ……… ブラウザ再起動をまたいで残すべき本体。
  * - assignments … tabId との結びつき。再起動で無意味になるので残してはいけない。
  *
- * この寿命の差がそのまま `chrome.storage.local` と `chrome.storage.session` の
- * 使い分けに対応する。
+ * `read` と `write` が同期なのは、読んでから書き戻すまでの間に await を挟ませない
+ * ため。挟むと、同時に来た別の操作 (ウィンドウを閉じたときの各タブの detach など)
+ * が同じ内容を読み、後から書き戻した側が先の変更を消してしまう。
  */
 export interface TabBoundStorage<T> {
-  loadRecords(): Promise<TabBoundRecord<T>[]>;
-  saveRecords(records: readonly TabBoundRecord<T>[]): Promise<void>;
-  loadAssignments(): Promise<Map<number, TabBoundRecordId>>;
-  saveAssignments(
-    assignments: ReadonlyMap<number, TabBoundRecordId>
-  ): Promise<void>;
+  /** 保存済みの内容を読み終えるまで待つ。`read` と `write` はこれが済んでから呼ぶ。 */
+  ready(): Promise<void>;
+  /** 返した値を書き換えても保存内容には響かない。 */
+  read(): TabBoundState<T>;
+  write(state: TabBoundState<T>): void;
 }

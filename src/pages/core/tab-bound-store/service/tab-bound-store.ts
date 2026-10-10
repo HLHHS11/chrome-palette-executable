@@ -6,7 +6,10 @@ import type {
   TabBoundRecord,
   TabBoundRecordId,
 } from "../domain/types";
-import type { TabBoundStorage } from "../storage/tab-bound-storage";
+import type {
+  TabBoundState,
+  TabBoundStorage,
+} from "../storage/tab-bound-storage";
 
 export interface TabBoundStoreOptions<T> {
   storage: TabBoundStorage<T>;
@@ -58,34 +61,34 @@ export class TabBoundStore<T> {
   }
 
   async get(tabId: number): Promise<T | undefined> {
-    const record = await this.recordOf(tabId);
-    return record?.value;
+    return this.transact((state) => recordOf(state, tabId)?.value);
   }
 
   async getRecord(tabId: number): Promise<TabBoundRecord<T> | undefined> {
-    return this.recordOf(tabId);
+    return this.transact((state) => recordOf(state, tabId));
   }
 
   /** タブに値を設定する。既存があれば値と binding を更新する。 */
   async set(tabId: number, value: T, binding: TabBinding): Promise<void> {
-    const [records, assignments] = await this.load();
-    const existingId = assignments.get(tabId);
-    const index = records.findIndex((r) => r.id === existingId);
+    await this.transact(({ records, assignments }) => {
+      const existingId = assignments.get(tabId);
+      const index = records.findIndex((r) => r.id === existingId);
 
-    if (index >= 0) {
-      records[index] = {
-        ...records[index],
-        value,
-        binding,
-        updatedAt: this.now(),
-      };
-    } else {
-      const id = this.generateId();
-      records.push({ id, value, binding, updatedAt: this.now() });
-      assignments.set(tabId, id);
-    }
+      if (index >= 0) {
+        records[index] = {
+          ...records[index],
+          value,
+          binding,
+          updatedAt: this.now(),
+        };
+      } else {
+        const id = this.generateId();
+        records.push({ id, value, binding, updatedAt: this.now() });
+        assignments.set(tabId, id);
+      }
 
-    await this.persist(records, assignments);
+      this.persist(records, assignments);
+    });
   }
 
   /**
@@ -95,12 +98,13 @@ export class TabBoundStore<T> {
    * タイマーのように、タブが閉じられた後も期限が来れば状態が進む値のための入口。
    */
   async setValue(recordId: TabBoundRecordId, value: T): Promise<boolean> {
-    const [records, assignments] = await this.load();
-    const index = records.findIndex((r) => r.id === recordId);
-    if (index < 0) return false;
-    records[index] = { ...records[index], value, updatedAt: this.now() };
-    await this.persist(records, assignments);
-    return true;
+    return this.transact(({ records, assignments }) => {
+      const index = records.findIndex((r) => r.id === recordId);
+      if (index < 0) return false;
+      records[index] = { ...records[index], value, updatedAt: this.now() };
+      this.persist(records, assignments);
+      return true;
+    });
   }
 
   /**
@@ -108,25 +112,27 @@ export class TabBoundStore<T> {
    * 遷移やタブ移動のたびに呼ぶことで、再結合の手がかりを新鮮に保つ。
    */
   async syncBinding(tabId: number, binding: TabBinding): Promise<void> {
-    const [records, assignments] = await this.load();
-    const id = assignments.get(tabId);
-    if (id === undefined) return;
-    const index = records.findIndex((r) => r.id === id);
-    if (index < 0) return;
-    records[index] = { ...records[index], binding, updatedAt: this.now() };
-    await this.persist(records, assignments);
+    await this.transact(({ records, assignments }) => {
+      const id = assignments.get(tabId);
+      if (id === undefined) return;
+      const index = records.findIndex((r) => r.id === id);
+      if (index < 0) return;
+      records[index] = { ...records[index], binding, updatedAt: this.now() };
+      this.persist(records, assignments);
+    });
   }
 
   /** タブに紐づく値を完全に削除する。 */
   async delete(tabId: number): Promise<void> {
-    const [records, assignments] = await this.load();
-    const id = assignments.get(tabId);
-    if (id === undefined) return;
-    assignments.delete(tabId);
-    await this.persist(
-      records.filter((r) => r.id !== id),
-      assignments
-    );
+    await this.transact(({ records, assignments }) => {
+      const id = assignments.get(tabId);
+      if (id === undefined) return;
+      assignments.delete(tabId);
+      this.persist(
+        records.filter((r) => r.id !== id),
+        assignments
+      );
+    });
   }
 
   /**
@@ -134,9 +140,10 @@ export class TabBoundStore<T> {
    * レコードは孤児として残るため、復元されれば再結合できる。
    */
   async detach(tabId: number): Promise<void> {
-    const [records, assignments] = await this.load();
-    if (!assignments.delete(tabId)) return;
-    await this.persist(records, assignments);
+    await this.transact(({ records, assignments }) => {
+      if (!assignments.delete(tabId)) return;
+      this.persist(records, assignments);
+    });
   }
 
   /**
@@ -146,16 +153,17 @@ export class TabBoundStore<T> {
    * (あるいは既に失われている) 場合の入口。旧形式データの取り込みにも使う。
    */
   async createOrphan(value: T, binding: TabBinding): Promise<TabBoundRecordId> {
-    const [records, assignments] = await this.load();
-    const id = this.generateId();
-    records.push({ id, value, binding, updatedAt: this.now() });
-    await this.persist(records, assignments);
-    return id;
+    return this.transact(({ records, assignments }) => {
+      const id = this.generateId();
+      records.push({ id, value, binding, updatedAt: this.now() });
+      this.persist(records, assignments);
+      return id;
+    });
   }
 
   /** 結びつきの有無によらず、保持しているレコードすべて。 */
   async allRecords(): Promise<TabBoundRecord<T>[]> {
-    return this.storage.loadRecords();
+    return this.transact(({ records }) => records);
   }
 
   /**
@@ -165,24 +173,26 @@ export class TabBoundStore<T> {
    * タブ数だけ読み出しが走るので、一度で済ませるための入口。
    */
   async attachedRecords(): Promise<Map<number, TabBoundRecord<T>>> {
-    const [records, assignments] = await this.load();
-    const byId = new Map(records.map((record) => [record.id, record]));
-    const attached = new Map<number, TabBoundRecord<T>>();
-    for (const [tabId, recordId] of assignments) {
-      const record = byId.get(recordId);
-      if (record) attached.set(tabId, record);
-    }
-    return attached;
+    return this.transact(({ records, assignments }) => {
+      const byId = new Map(records.map((record) => [record.id, record]));
+      const attached = new Map<number, TabBoundRecord<T>>();
+      for (const [tabId, recordId] of assignments) {
+        const record = byId.get(recordId);
+        if (record) attached.set(tabId, record);
+      }
+      return attached;
+    });
   }
 
   /** どのタブにも結びついていないレコード。 */
   async orphans(): Promise<TabBoundRecord<T>[]> {
-    const [records, assignments] = await this.load();
-    const attached = new Set(assignments.values());
-    const now = this.now();
-    return records.filter(
-      (record) => !attached.has(record.id) && !this.isExpired(record, now)
-    );
+    return this.transact(({ records, assignments }) => {
+      const attached = new Set(assignments.values());
+      const now = this.now();
+      return records.filter(
+        (record) => !attached.has(record.id) && !this.isExpired(record, now)
+      );
+    });
   }
 
   /**
@@ -193,15 +203,16 @@ export class TabBoundStore<T> {
    */
   async pruneExpiredOrphans(): Promise<number> {
     if (this.orphanTtlMs === undefined) return 0;
-    const [records, assignments] = await this.load();
-    const now = this.now();
-    const attached = new Set(assignments.values());
-    const kept = records.filter(
-      (record) => attached.has(record.id) || !this.isExpired(record, now)
-    );
-    if (kept.length === records.length) return 0;
-    await this.persist(kept, assignments);
-    return records.length - kept.length;
+    return this.transact(({ records, assignments }) => {
+      const now = this.now();
+      const attached = new Set(assignments.values());
+      const kept = records.filter(
+        (record) => attached.has(record.id) || !this.isExpired(record, now)
+      );
+      if (kept.length === records.length) return 0;
+      this.persist(kept, assignments);
+      return records.length - kept.length;
+    });
   }
 
   private isExpired(record: TabBoundRecord<T>, now: number): boolean {
@@ -216,20 +227,22 @@ export class TabBoundStore<T> {
     recordId: TabBoundRecordId,
     tabId: number
   ): Promise<boolean> {
-    const [records, assignments] = await this.load();
-    if (!records.some((r) => r.id === recordId)) return false;
-    if ([...assignments.values()].includes(recordId)) return false;
-    assignments.set(tabId, recordId);
-    await this.persist(records, assignments);
-    return true;
+    return this.transact(({ records, assignments }) => {
+      if (!records.some((r) => r.id === recordId)) return false;
+      if ([...assignments.values()].includes(recordId)) return false;
+      assignments.set(tabId, recordId);
+      this.persist(records, assignments);
+      return true;
+    });
   }
 
   async forgetOrphan(recordId: TabBoundRecordId): Promise<boolean> {
-    const [records, assignments] = await this.load();
-    const next = records.filter((r) => r.id !== recordId);
-    if (next.length === records.length) return false;
-    await this.persist(next, assignments);
-    return true;
+    return this.transact(({ records, assignments }) => {
+      const next = records.filter((r) => r.id !== recordId);
+      if (next.length === records.length) return false;
+      this.persist(next, assignments);
+      return true;
+    });
   }
 
   /**
@@ -241,44 +254,41 @@ export class TabBoundStore<T> {
   async rematch(
     candidates: readonly RematchCandidate[]
   ): Promise<RematchOutcome> {
-    const records = await this.storage.loadRecords();
-    const surviving = records.filter((r) => this.survivesSession(r.value));
-    const outcome = rematchRecords(surviving, candidates);
+    return this.transact(({ records }) => {
+      const surviving = records.filter((r) => this.survivesSession(r.value));
+      const outcome = rematchRecords(surviving, candidates);
 
-    const assignments = new Map<number, TabBoundRecordId>();
-    for (const [recordId, tabId] of outcome.matched) {
-      assignments.set(tabId, recordId);
-    }
-    await this.persist(surviving, assignments);
-    return outcome;
+      const assignments = new Map<number, TabBoundRecordId>();
+      for (const [recordId, tabId] of outcome.matched) {
+        assignments.set(tabId, recordId);
+      }
+      this.persist(surviving, assignments);
+      return outcome;
+    });
   }
 
-  private async recordOf(
-    tabId: number
-  ): Promise<TabBoundRecord<T> | undefined> {
-    const [records, assignments] = await this.load();
-    const id = assignments.get(tabId);
-    if (id === undefined) return undefined;
-    return records.find((r) => r.id === id);
+  /**
+   * 保存内容を読んで `operation` に渡す。
+   *
+   * 読み込みの完了を待った後は、`operation` が書き戻すまで同期的に進む。
+   * そのため同時に来た操作同士でも、互いの変更を上書きすることがない。
+   * `operation` の中で await してはいけない。
+   */
+  private async transact<R>(
+    operation: (state: TabBoundState<T>) => R
+  ): Promise<R> {
+    await this.storage.ready();
+    return operation(this.storage.read());
   }
 
-  private async load(): Promise<
-    [TabBoundRecord<T>[], Map<number, TabBoundRecordId>]
-  > {
-    return Promise.all([
-      this.storage.loadRecords(),
-      this.storage.loadAssignments(),
-    ]);
-  }
-
-  private async persist(
+  private persist(
     records: readonly TabBoundRecord<T>[],
-    assignments: ReadonlyMap<number, TabBoundRecordId>
-  ): Promise<void> {
-    await Promise.all([
-      this.storage.saveRecords(this.stampDetachment(records, assignments)),
-      this.storage.saveAssignments(assignments),
-    ]);
+    assignments: Map<number, TabBoundRecordId>
+  ): void {
+    this.storage.write({
+      records: this.stampDetachment(records, assignments),
+      assignments,
+    });
   }
 
   /**
@@ -306,4 +316,13 @@ export class TabBoundStore<T> {
         : record;
     });
   }
+}
+
+function recordOf<T>(
+  { records, assignments }: TabBoundState<T>,
+  tabId: number
+): TabBoundRecord<T> | undefined {
+  const id = assignments.get(tabId);
+  if (id === undefined) return undefined;
+  return records.find((r) => r.id === id);
 }

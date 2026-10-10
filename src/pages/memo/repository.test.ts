@@ -95,9 +95,9 @@ describe("MemoRepository", () => {
     const { repository, storage } = createRepository();
     await repository.save(1, memo("古い形式"));
     // 最大化を廃止する前の保存値を直接作る。
-    const stored = await storage.loadRecords();
-    stored[0].value.layout.state = "expanded" as never;
-    await storage.saveRecords(stored);
+    const stored = storage.read();
+    stored.records[0].value.layout.state = "expanded" as never;
+    storage.write(stored);
 
     const loaded = await repository.findByTabId(1);
 
@@ -109,12 +109,12 @@ describe("MemoRepository", () => {
     const { repository, storage } = createRepository();
     await repository.save(1, memo("a"));
     await repository.save(2, memo("b"));
-    const loadRecords = vi.spyOn(storage, "loadRecords");
+    const read = vi.spyOn(storage, "read");
 
     await repository.listAttachedSummaries();
 
     // タブごとに引くと開いているタブ数だけ読み出しが走ってしまう。
-    assert.equal(loadRecords.mock.calls.length, 1);
+    assert.equal(read.mock.calls.length, 1);
   });
 });
 
@@ -194,10 +194,10 @@ describe("MemoRepository: 引き継ぎ候補の絞り込み", () => {
     await repository.save(2, memo("新しい方"));
     await repository.detach(1);
     await repository.detach(2);
-    const records = await storage.loadRecords();
-    records[0].updatedAt = 1_000;
-    records[1].updatedAt = 2_000;
-    await storage.saveRecords(records);
+    const stored = storage.read();
+    stored.records[0].updatedAt = 1_000;
+    stored.records[1].updatedAt = 2_000;
+    storage.write(stored);
 
     const candidates = await repository.listOrphansForUrl(
       "https://example.com/"
