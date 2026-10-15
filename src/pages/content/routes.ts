@@ -26,6 +26,7 @@ import {
 } from "./tab-numbering";
 import { getPageText } from "./tab-search-page-actions";
 import { refreshTimerOverlay } from "./timer-overlay";
+import { getYouTubeCurrentTime } from "./youtube-page-actions";
 
 export const routes = [
   { name: "chatgpt.enableWebSearch", handler: enableChatGptWebSearch },
@@ -60,4 +61,5 @@ export const routes = [
   { name: "memo.refreshOverlay", handler: refreshMemoOverlay },
   { name: "memo.focusOverlay", handler: focusMemoOverlay },
   { name: "timer.refreshOverlay", handler: refreshTimerOverlay },
+  { name: "youtube.getCurrentTime", handler: getYouTubeCurrentTime },
 ] as const satisfies readonly RpcRoute[];

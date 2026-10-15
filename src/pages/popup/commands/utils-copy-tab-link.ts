@@ -33,7 +33,7 @@ function applyTextFragmentDirectiveToPageUrl(
     : `${base}#:~:${textDirective}`;
 }
 
-function buildMarkdownLinkSnippet(
+export function buildMarkdownLinkSnippet(
   documentTitle: string,
   pageUrl: string
 ): string {
