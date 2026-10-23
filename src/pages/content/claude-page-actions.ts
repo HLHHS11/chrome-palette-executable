@@ -7,60 +7,60 @@ import {
   waitUntilValue,
 } from "../lib/dom/selector";
 
-type SelectClaudeModelParams = {
-  model: "sonnet-4.6" | "opus-4.7";
-  // アダプティブ思考スイッチの状態を表す。 thinking=ON, instant=OFF。
-  mode: "instant" | "thinking";
+export type SelectClaudeModelParams = {
+  // モデル選択メニュー項目の data-model-id
+  model:
+    | "claude-opus-5-5"
+    | "claude-sonnet-5-5"
+    | "claude-haiku-5-5"
+    | "claude-fable-5-1";
+  // エフォートのサブメニュー項目の data-effort-id
+  effort: "low" | "medium" | "high" | "xhigh" | "max";
 };
-
-// NOTE: Claude UI 上のモデル表示名 (英語表記) が変更されたら、ここも修正が必要になる！
-const CLAUDE_MODEL_LABEL: Record<SelectClaudeModelParams["model"], string> = {
-  "sonnet-4.6": "Sonnet 4.6",
-  "opus-4.7": "Opus 4.7",
-};
-
-// NOTE: UI 文言が変更されたら、ここも修正が必要になる！日本語 UI 前提。
-const ADAPTIVE_THINKING_SWITCH_LABEL = "アダプティブ思考";
-const OTHER_MODELS_MENU_LABEL = "他のモデル";
 
 const TRIGGER_SELECTOR = 'button[data-testid="model-selector-dropdown"]';
+const MENU_SELECTOR = '[role="menu"][data-cds="ModelSelector"]';
 
-type OpenMenuRefs = {
-  activeItem: HTMLElement;
-  switchInput: HTMLInputElement;
-};
-
-async function openModelMenu(
-  trigger: HTMLElement
-): Promise<OpenMenuRefs | null> {
+async function openModelMenu(trigger: HTMLElement): Promise<Element | null> {
   // ブラウザコンソールで .click() がメニューを開けることが確認済。
   // simulateMouseClick 系では Base UI 側がメニューを開かないため、素の click() を使う。
   trigger.click();
-  const result = await waitUntilValue<OpenMenuRefs>(() => {
-    const activeItem = document.querySelector<HTMLElement>(
-      '[role="menuitemradio"][aria-checked="true"]'
-    );
-    const switchInput = document.querySelector<HTMLInputElement>(
-      `input[role="switch"][aria-label="${ADAPTIVE_THINKING_SWITCH_LABEL}"]`
-    );
-    if (!activeItem || !switchInput) {
-      return { status: "pending", value: null };
-    }
-    return { status: "found", value: { activeItem, switchInput } };
-  });
-  return result.status === "found" ? result.value : null;
+  return await waitForSelector(MENU_SELECTOR, { timeoutMs: 3000 }).catch(
+    () => null
+  );
 }
 
-async function waitForMenuClosed(): Promise<boolean> {
-  const result = await waitUntilValue<true>(() => {
-    const stillOpen = document.querySelector(
-      '[role="menuitemradio"][aria-checked="true"]'
-    );
-    return stillOpen
-      ? { status: "pending", value: null }
-      : { status: "found", value: true };
-  });
+async function waitForMenuClosed(options?: {
+  timeoutMs?: number;
+}): Promise<boolean> {
+  const result = await waitUntilValue<true>(
+    () =>
+      document.querySelector(MENU_SELECTOR)
+        ? { status: "pending", value: null }
+        : { status: "found", value: true },
+    options
+  );
   return result.status === "found";
+}
+
+function openSubmenu(menu: Element, label: string): boolean {
+  const item = [
+    ...menu.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((el) => el.textContent?.trim().startsWith(label));
+  if (!item) return false;
+  // Base UI の submenu は click/pointer では安定して開かないため
+  // ARIA メニュー標準どおり ArrowRight キーで開く。
+  item.focus();
+  const arrowRightInit: KeyboardEventInit = {
+    key: "ArrowRight",
+    code: "ArrowRight",
+    keyCode: 39,
+    bubbles: true,
+    cancelable: true,
+  };
+  item.dispatchEvent(new KeyboardEvent("keydown", arrowRightInit));
+  item.dispatchEvent(new KeyboardEvent("keyup", arrowRightInit));
+  return true;
 }
 
 function dispatchEscape(): void {
@@ -77,20 +77,6 @@ function dispatchEscape(): void {
   );
 }
 
-function toggleAdaptiveThinking(
-  switchInput: HTMLInputElement
-): RpcResponse<RpcVoidResponseBody> | null {
-  const switchTarget = switchInput.closest("label");
-  if (!(switchTarget instanceof HTMLElement)) {
-    return {
-      ok: false,
-      error: "アダプティブ思考スイッチの操作対象が見つかりません。",
-    };
-  }
-  simulateMouseClickSequence(switchTarget);
-  return null;
-}
-
 export async function selectClaudeModel(
   params: SelectClaudeModelParams
 ): Promise<RpcResponse<RpcVoidResponseBody>> {
@@ -101,120 +87,81 @@ export async function selectClaudeModel(
     return { ok: false, error: "モデル選択ドロップダウンが見つかりません。" };
   }
 
-  const initial = await openModelMenu(trigger);
-  if (!initial) {
+  // NOTE: UI 文言が変更されたら、ここも修正が必要になる！日本語 UI 前提。
+  const OTHER_MODELS_MENU_LABEL = "他のモデル";
+  const EFFORT_MENU_LABEL = "エフォート";
+
+  // メニュー直下には選択中のモデルだけが並び、それ以外は「他のモデル」サブメニューにある。
+  const activeModelSelector = `[data-model-id="${params.model}"][aria-checked="true"]`;
+  let menu = await openModelMenu(trigger);
+  if (!menu) {
     return { ok: false, error: "モデル選択メニューが開きませんでした。" };
   }
 
-  const targetLabel = CLAUDE_MODEL_LABEL[params.model];
-  const wantThinking = params.mode === "thinking";
-  const initialActiveLabel = initial.activeItem.textContent?.trim() ?? "";
-  const needsModelChange = !initialActiveLabel.includes(targetLabel);
-
-  // -----------------------------------------------------------------------
-  // 本来やりたかったシンプルな実装:
-  //   1 回ドロップダウンを開く → その場で switch を望む状態に合わせる →
-  //   サブメニューから目的モデルを選ぶ → メニューを閉じる
-  // この順序で 1 ラウンドで両方を完結させたかった。
-  //
-  // ところが実機で観測した挙動:
-  //   モデルをまたぐ変更 (例: Opus instant → Sonnet thinking) で、
-  //     - switch の label クリック自体は React 側にちゃんと届いていて、
-  //       約 +500ms 後にはトリガーの aria-label が「Sonnet 4.6 アダプティブ」に
-  //       一度切り替わる (= thinking ON が見える)
-  //     - しかしその後、サブメニューでのモデル選択処理が走り切ると、Claude 側で
-  //       「新しいモデルのデフォルト thinking 状態」に内部で書き直してしまう
-  //     - 結果、 +1500ms 後には aria-label が「Sonnet 4.6」(thinking OFF) に戻る
-  //   ユーザー体感としては「一瞬正しく見えるが、直後に thinking だけ外れる」になり、
-  //   モデルとアダプティブ思考の両方を変えたいケースで片方しか反映されない。
-  //
-  // つまり 「switch のトグル」 と 「モデル変更」 は独立操作ではなく、
-  // モデル変更の方が switch を上書きする副作用を持っている。
-  // 同じメニュー内で順番を入れ替えても、モデル変更が後に走る限り上書きされる。
-  //
-  // 解決方針: モデル変更がある場合に限り、操作を二段階に分ける。
-  //   (a) 先にサブメニューでモデルだけ変える (この回では switch を触らない)
-  //   (b) メニューが閉じ、モデル切替に伴う thinking のリセットも含めて
-  //       内部状態が確定するのを待つ
-  //   (c) ドロップダウンを再オープンし、確定した新モデル上での switch の現状を
-  //       読んでから、必要なら switch をトグルする
-  // (c) の switch トグルはモデル変更より後に走るので、もう上書きされない。
-  // モデル変更がないケースでは元のシンプルな 1 ラウンドフローで済むので分岐させる。
-  // -----------------------------------------------------------------------
-  if (needsModelChange) {
-    const otherModelsItem = [
-      ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
-    ].find((el) => el.textContent?.trim().startsWith(OTHER_MODELS_MENU_LABEL));
-    if (!otherModelsItem) {
+  // モデルを選ぶとメニューが閉じるので、モデル変更がある場合はモデルだけ先に変え、
+  // メニューを開き直してからエフォートを合わせる。
+  // (旧 UI では、モデル変更が同じメニュー内で先に操作した思考設定をモデルのデフォルトで上書きしていた)
+  if (!menu.querySelector(activeModelSelector)) {
+    if (!openSubmenu(menu, OTHER_MODELS_MENU_LABEL)) {
       return {
         ok: false,
-        error: "「他のモデル」メニュー項目が見つかりません。",
+        error: `「${OTHER_MODELS_MENU_LABEL}」メニュー項目が見つかりません。`,
       };
     }
-    // Base UI の submenu は click/pointer では安定して開かないため
-    // ARIA メニュー標準どおり ArrowRight キーで開く。
-    otherModelsItem.focus();
-    const arrowRightInit: KeyboardEventInit = {
-      key: "ArrowRight",
-      code: "ArrowRight",
-      keyCode: 39,
-      bubbles: true,
-      cancelable: true,
-    };
-    otherModelsItem.dispatchEvent(new KeyboardEvent("keydown", arrowRightInit));
-    otherModelsItem.dispatchEvent(new KeyboardEvent("keyup", arrowRightInit));
-
-    const submenuItemResult = await waitUntilValue<HTMLElement>(() => {
-      const items = document.querySelectorAll<HTMLElement>(
-        '[role="menuitem"], [role="menuitemradio"]'
-      );
-      const found = [...items].find(
-        (item) =>
-          item !== initial.activeItem &&
-          (item.textContent?.includes(targetLabel) ?? false)
-      );
-      return typeof found !== "undefined"
-        ? { status: "found", value: found }
-        : { status: "pending", value: null };
-    });
-    if (submenuItemResult.status !== "found") {
+    const modelItem = await waitForSelector(
+      `[data-model-id="${params.model}"]`,
+      { timeoutMs: 3000 }
+    ).catch(() => null);
+    if (!modelItem) {
       return {
         ok: false,
-        error: `モデル「${targetLabel}」の項目が見つかりません。`,
+        error: `モデル「${params.model}」の項目が見つかりません。`,
       };
     }
-    simulateMouseClickSequence(submenuItemResult.value);
+    simulateMouseClickSequence(modelItem);
 
-    // モデル切替に伴ってメニューが閉じる & 内部状態の確定を待つ。
-    const closed = await waitForMenuClosed();
-    if (!closed) {
-      return {
-        ok: false,
-        error: "モデル切替後にメニューが閉じませんでした。",
-      };
+    if (!(await waitForMenuClosed())) {
+      return { ok: false, error: "モデル切替後にメニューが閉じませんでした。" };
     }
-
-    // 新モデルの thinking デフォルトに合わせて switch を確認するため、メニューを再オープン。
-    const reopened = await openModelMenu(trigger);
-    if (!reopened) {
+    menu = await openModelMenu(trigger);
+    if (!menu) {
       return {
         ok: false,
         error: "モデル切替後にメニューを再オープンできませんでした。",
       };
     }
-    if (reopened.switchInput.checked !== wantThinking) {
-      const err = toggleAdaptiveThinking(reopened.switchInput);
-      if (err) return err;
-    }
-  } else {
-    // モデル変更なし。 switch だけ調整すれば良い。
-    if (initial.switchInput.checked !== wantThinking) {
-      const err = toggleAdaptiveThinking(initial.switchInput);
-      if (err) return err;
+    // Fable のように使用クレジットが必要なモデルは、クレジットがないと選択されずに購入案内が出る。
+    if (!menu.querySelector(activeModelSelector)) {
+      dispatchEscape();
+      return {
+        ok: false,
+        error: `モデル「${params.model}」に切り替えられませんでした。使用クレジットが必要なモデルの可能性があります。`,
+      };
     }
   }
 
-  dispatchEscape();
+  if (!openSubmenu(menu, EFFORT_MENU_LABEL)) {
+    return {
+      ok: false,
+      error: `「${EFFORT_MENU_LABEL}」メニュー項目が見つかりません。`,
+    };
+  }
+  const effortItem = await waitForSelector(
+    `[role="menuitemradio"][data-effort-id="${params.effort}"]`,
+    { timeoutMs: 3000 }
+  ).catch(() => null);
+  if (!effortItem) {
+    return {
+      ok: false,
+      error: `エフォート「${params.effort}」の項目が見つかりません。`,
+    };
+  }
+  if (effortItem.getAttribute("aria-checked") !== "true") {
+    simulateMouseClickSequence(effortItem);
+  }
+  if (!(await waitForMenuClosed({ timeoutMs: 500 }))) {
+    dispatchEscape();
+  }
   return { ok: true, data: {} };
 }
 
